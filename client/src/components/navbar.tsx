@@ -1,0 +1,119 @@
+"use client";
+
+import { Link, useLocation } from "wouter";
+import { useState, useEffect, useCallback } from "react";
+import { Menu } from "lucide-react";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { AdminGate } from "@/components/admin-gate";
+import { SearchTrigger } from "@/components/search";
+
+const navLinks = [
+  { href: "/", label: "首页" },
+  { href: "/archive", label: "归档" },
+  { href: "/about", label: "关于" },
+];
+
+export function Navbar() {
+  const [location] = useLocation();
+  const [open, setOpen] = useState(false);
+  const [gateOpen, setGateOpen] = useState(false);
+
+  // 全局键盘快捷键 Ctrl+Shift+A
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key === "A") {
+        e.preventDefault();
+        setGateOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
+  // Logo 双击处理
+  const handleLogoDoubleClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setGateOpen(true);
+  }, []);
+
+  // 管理页面不显示暗门（已经在后台了）
+  const isAdmin = location.startsWith("/admin");
+
+  return (
+    <>
+      <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-xl backdrop-saturate-150">
+        <div className="mx-auto flex h-[56px] max-w-[1440px] items-center justify-between px-[20px] lg:px-[40px]">
+          {/* Logo — 双击触发管理暗门 */}
+          <Link
+            href="/"
+            className="group flex items-center gap-[10px] select-none animate-slide-in-left"
+            onDoubleClick={handleLogoDoubleClick}
+          >
+            <div className="relative flex h-[32px] w-[20px] items-center justify-center">
+              <div className="absolute inset-0 rounded-[3px] bg-gradient-to-b from-foreground/90 to-foreground/60 transition-all duration-500 group-hover:from-blue-400 group-hover:to-purple-500 group-hover:shadow-[0_0_20px_rgba(100,100,255,0.3)]" />
+            </div>
+            <span className="text-[18px] font-semibold tracking-[-0.03em] text-foreground">
+              Monolith
+            </span>
+          </Link>
+
+          {/* 桌面端导航 */}
+          <nav className="hidden items-center gap-[8px] md:flex">
+            {navLinks.map((link, i) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`relative px-[12px] py-[6px] text-[14px] transition-colors duration-200 animate-fade-in-down delay-${i + 1} ${
+                  location === link.href
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {link.label}
+                {location === link.href && (
+                  <span className="absolute bottom-0 left-[12px] right-[12px] h-[1.5px] bg-foreground rounded-full" />
+                )}
+              </Link>
+            ))}
+          </nav>
+
+          {/* 搜索按钮 */}
+          <div className="hidden md:flex items-center">
+            <SearchTrigger />
+          </div>
+
+          {/* 移动端菜单 */}
+          <Sheet open={open} onOpenChange={setOpen}>
+            <SheetTrigger className="md:hidden inline-flex items-center justify-center h-[36px] w-[36px] rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors duration-200">
+              <Menu className="h-[18px] w-[18px]" />
+            </SheetTrigger>
+            <SheetContent side="right" className="w-[280px] bg-background/95 backdrop-blur-xl">
+              <nav className="flex flex-col gap-[4px] pt-[40px]">
+                {navLinks.map((link) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setOpen(false)}
+                    className={`rounded-md px-[16px] py-[12px] text-[15px] transition-colors duration-200 ${
+                      location === link.href
+                        ? "bg-accent text-foreground font-medium"
+                        : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                    }`}
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+              </nav>
+            </SheetContent>
+          </Sheet>
+        </div>
+      </header>
+
+      {/* 管理员暗门弹窗 */}
+      {!isAdmin && (
+        <AdminGate open={gateOpen} onClose={() => setGateOpen(false)} />
+      )}
+    </>
+  );
+}

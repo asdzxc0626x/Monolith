@@ -1,0 +1,580 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  /* 调用苹果原厂 SF Pro / 苹方 fallback 魔法 */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, "Noto Sans SC", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Fira Code", Consolas, monospace;
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+.dark {
+  --background: oklch(0.18 0.006 260);
+  --foreground: oklch(0.94 0 0);
+  --card: oklch(0.22 0.007 260);
+  --card-foreground: oklch(0.94 0 0);
+  --popover: oklch(0.22 0.007 260);
+  --popover-foreground: oklch(0.94 0 0);
+  --primary: oklch(0.90 0 0);
+  --primary-foreground: oklch(0.18 0 0);
+  --secondary: oklch(0.28 0.006 260);
+  --secondary-foreground: oklch(0.90 0 0);
+  --muted: oklch(0.28 0.006 260);
+  --muted-foreground: oklch(0.68 0 0);
+  --accent: oklch(0.28 0.010 260);
+  --accent-foreground: oklch(0.90 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 14%);
+  --ring: oklch(0.55 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.20 0.006 260);
+  --sidebar-foreground: oklch(0.94 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.28 0.006 260);
+  --sidebar-accent-foreground: oklch(0.90 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.55 0 0);
+}
+
+/* ─────────────────────────────────────────────
+   基础排版层
+   ───────────────────────────────────────────── */
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-size: 15px;
+    line-height: 1.8;
+    letter-spacing: 0;
+    -webkit-overflow-scrolling: touch;
+    -webkit-tap-highlight-color: transparent;
+  }
+  html {
+    @apply font-sans;
+    scroll-behavior: smooth;
+  }
+
+  /* 标题字距补偿体系 */
+  h1 { @apply text-[28px] font-semibold tracking-[-0.02em] leading-snug; }
+  h2 { @apply text-[20px] font-semibold tracking-[-0.01em] leading-normal; }
+  h3 { @apply text-[16px] font-bold tracking-normal; }
+  h4 { @apply text-[14px] font-bold tracking-normal; }
+
+  /* 全局选中色 */
+  ::selection {
+    background: oklch(0.55 0.15 260 / 30%);
+  }
+}
+
+/* ─────────────────────────────────────────────
+   渐变径向工具类
+   ───────────────────────────────────────────── */
+@layer utilities {
+  .bg-gradient-radial {
+    background-image: radial-gradient(ellipse at center, var(--tw-gradient-stops));
+  }
+}
+
+/* ─────────────────────────────────────────────
+   动画系统
+   ───────────────────────────────────────────── */
+
+/* 关键帧 */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fade-in-down {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-in-left {
+  from { opacity: 0; transform: translateX(-20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes blur-in {
+  from { opacity: 0; filter: blur(8px); }
+  to { opacity: 1; filter: blur(0); }
+}
+
+/* 动画工具类 */
+.animate-fade-in-up {
+  animation: fade-in-up 0.6s ease-out both;
+}
+.animate-fade-in {
+  animation: fade-in 0.5s ease-out both;
+}
+.animate-fade-in-down {
+  animation: fade-in-down 0.4s ease-out both;
+}
+.animate-slide-in-left {
+  animation: slide-in-left 0.5s ease-out both;
+}
+.animate-scale-in {
+  animation: scale-in 0.4s ease-out both;
+}
+.animate-blur-in {
+  animation: blur-in 0.6s ease-out both;
+}
+
+/* 交错延迟 */
+.delay-0 { animation-delay: 0ms; }
+.delay-1 { animation-delay: 80ms; }
+.delay-2 { animation-delay: 160ms; }
+.delay-3 { animation-delay: 240ms; }
+.delay-4 { animation-delay: 320ms; }
+.delay-5 { animation-delay: 400ms; }
+.delay-6 { animation-delay: 480ms; }
+
+/* 滚动触发：元素初始隐藏，进入视口后触发动画 */
+.scroll-animate {
+  opacity: 0;
+}
+.scroll-animate.is-visible {
+  animation: fade-in-up 0.6s ease-out both;
+}
+
+/* 卡片 hover 微动效 */
+.card-hover {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.card-hover:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+}
+
+/* 链接下划线动画 */
+.link-underline {
+  position: relative;
+}
+.link-underline::after {
+  content: "";
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 1.5px;
+  background: currentColor;
+  transition: width 0.3s ease;
+}
+.link-underline:hover::after {
+  width: 100%;
+}
+
+/* ─────────────────────────────────────────────
+   Monolith 文章正文排版系统 (prose-monolith)
+   基于工业级排版规范，中文零字距，严格模数间距
+   ───────────────────────────────────────────── */
+.prose-monolith {
+  font-size: 15px;
+  line-height: 1.8;
+  letter-spacing: 0;
+  color: oklch(0.85 0 0);
+}
+
+/* 标题 */
+.prose-monolith h2 {
+  margin-top: 40px;
+  margin-bottom: 16px;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.4;
+  color: oklch(0.95 0 0);
+}
+
+.prose-monolith h3 {
+  margin-top: 32px;
+  margin-bottom: 12px;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.5;
+  color: oklch(0.92 0 0);
+}
+
+.prose-monolith h4 {
+  margin-top: 24px;
+  margin-bottom: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: oklch(0.90 0 0);
+}
+
+/* 段落 */
+.prose-monolith p {
+  margin-bottom: 16px;
+}
+
+/* 链接 */
+.prose-monolith a {
+  color: oklch(0.7 0.12 260);
+  text-decoration: underline;
+  text-decoration-color: oklch(0.7 0.12 260 / 30%);
+  text-underline-offset: 3px;
+  transition: all 0.2s ease;
+}
+
+.prose-monolith a:hover {
+  color: oklch(0.8 0.15 260);
+  text-decoration-color: oklch(0.8 0.15 260 / 60%);
+}
+
+/* 粗体 */
+.prose-monolith strong {
+  font-weight: 600;
+  color: oklch(0.95 0 0);
+}
+
+/* 列表 */
+.prose-monolith ul,
+.prose-monolith ol {
+  margin-bottom: 16px;
+  padding-left: 20px;
+}
+
+.prose-monolith ul {
+  list-style-type: disc;
+}
+
+.prose-monolith ol {
+  list-style-type: decimal;
+}
+
+.prose-monolith li {
+  margin-bottom: 6px;
+  padding-left: 4px;
+}
+
+.prose-monolith li::marker {
+  color: oklch(0.55 0 0);
+}
+
+/* 引用块 */
+.prose-monolith blockquote {
+  margin: 24px 0;
+  padding: 16px 20px;
+  border-left: 3px solid oklch(0.5 0.1 260 / 50%);
+  background: oklch(1 0 0 / 4%);
+  border-radius: 0 8px 8px 0;
+  font-style: normal;
+}
+
+.prose-monolith blockquote p {
+  margin-bottom: 0;
+  color: oklch(0.78 0 0);
+}
+
+/* 行内代码 */
+.prose-monolith code:not(pre code) {
+  padding: 2px 6px;
+  font-size: 13px;
+  font-family: ui-monospace, "SF Mono", "Cascadia Code", "Fira Code", Consolas, monospace;
+  background: oklch(1 0 0 / 6%);
+  border: 1px solid oklch(1 0 0 / 8%);
+  border-radius: 4px;
+  color: oklch(0.85 0.06 260);
+}
+
+/* 代码块 */
+.prose-monolith pre {
+  margin: 20px 0;
+  padding: 20px;
+  border-radius: 8px;
+  background: oklch(0.15 0.006 260) !important;
+  border: 1px solid oklch(1 0 0 / 6%);
+  overflow-x: auto;
+  font-size: 13px;
+  line-height: 1.7;
+  font-family: ui-monospace, "SF Mono", "Cascadia Code", "Fira Code", Consolas, monospace;
+}
+
+.prose-monolith pre code {
+  padding: 0;
+  background: transparent !important;
+  border: none;
+  font-size: inherit;
+  color: oklch(0.85 0 0);
+}
+
+/* 分隔线 */
+.prose-monolith hr {
+  margin: 32px 0;
+  border: none;
+  border-top: 1px solid oklch(1 0 0 / 8%);
+}
+
+/* 表格响应式包裹 */
+.prose-monolith .table-wrapper {
+  overflow-x: auto;
+  margin: 20px 0;
+  border-radius: 8px;
+  border: 1px solid oklch(1 0 0 / 6%);
+}
+
+.prose-monolith table {
+  width: 100%;
+  margin: 0;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.prose-monolith th {
+  padding: 10px 16px;
+  text-align: left;
+  font-weight: 600;
+  color: oklch(0.88 0 0);
+  background: oklch(1 0 0 / 3%);
+  border-bottom: 2px solid oklch(1 0 0 / 10%);
+}
+
+.prose-monolith td {
+  padding: 10px 16px;
+  border-bottom: 1px solid oklch(1 0 0 / 6%);
+  color: oklch(0.75 0 0);
+}
+
+.prose-monolith tr:last-child td {
+  border-bottom: none;
+}
+
+.prose-monolith tr:hover td {
+  background: oklch(1 0 0 / 2%);
+}
+
+/* 代码块语言标签 */
+.prose-monolith pre {
+  position: relative;
+}
+
+.prose-monolith .code-lang {
+  position: absolute;
+  top: 6px;
+  right: 10px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: oklch(0.45 0 0);
+  pointer-events: none;
+  user-select: none;
+}
+
+/* 图片 figure */
+.prose-monolith .md-figure {
+  margin: 24px 0;
+  text-align: center;
+}
+
+.prose-monolith .md-figure img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  border: 1px solid oklch(1 0 0 / 6%);
+}
+
+.prose-monolith .md-figure figcaption {
+  margin-top: 8px;
+  font-size: 12px;
+  color: oklch(0.55 0 0);
+  font-style: italic;
+}
+
+/* 任务列表 */
+.prose-monolith ul:has(input[type="checkbox"]) {
+  list-style: none;
+  padding-left: 4px;
+}
+
+.prose-monolith input[type="checkbox"] {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid oklch(0.5 0 0);
+  border-radius: 3px;
+  margin-right: 8px;
+  vertical-align: middle;
+  position: relative;
+}
+
+.prose-monolith input[type="checkbox"]:checked {
+  background: oklch(0.6 0.15 150);
+  border-color: oklch(0.6 0.15 150);
+}
+
+.prose-monolith input[type="checkbox"]:checked::after {
+  content: "✓";
+  position: absolute;
+  top: -1px;
+  left: 2px;
+  font-size: 10px;
+  color: white;
+  font-weight: bold;
+}
+
+/* 删除线 */
+.prose-monolith del {
+  color: oklch(0.55 0 0);
+  text-decoration: line-through;
+}
+
+/* 嵌套列表缩进 */
+.prose-monolith ul ul,
+.prose-monolith ol ol,
+.prose-monolith ul ol,
+.prose-monolith ol ul {
+  margin-top: 4px;
+  margin-bottom: 4px;
+}
+
+/* 脚注 */
+.prose-monolith .footnotes {
+  margin-top: 40px;
+  padding-top: 16px;
+  border-top: 1px solid oklch(1 0 0 / 8%);
+  font-size: 13px;
+  color: oklch(0.65 0 0);
+}
+
+/* ─────────────────────────────────────────────
+   Highlight.js 暗色代码高亮主题（极简定制）
+   ───────────────────────────────────────────── */
+.hljs { color: oklch(0.82 0 0); }
+.hljs-keyword { color: oklch(0.72 0.16 300); }
+.hljs-string { color: oklch(0.72 0.12 150); }
+.hljs-number { color: oklch(0.75 0.13 60); }
+.hljs-comment { color: oklch(0.5 0 0); font-style: italic; }
+.hljs-function { color: oklch(0.78 0.1 230); }
+.hljs-title { color: oklch(0.78 0.12 230); }
+.hljs-title.function_ { color: oklch(0.78 0.12 230); }
+.hljs-params { color: oklch(0.78 0.06 60); }
+.hljs-type { color: oklch(0.75 0.12 200); }
+.hljs-built_in { color: oklch(0.75 0.12 200); }
+.hljs-literal { color: oklch(0.72 0.13 30); }
+.hljs-attr { color: oklch(0.78 0.1 80); }
+.hljs-property { color: oklch(0.78 0.08 230); }
+.hljs-meta { color: oklch(0.65 0.08 260); }
+.hljs-punctuation { color: oklch(0.6 0 0); }
+.hljs-variable { color: oklch(0.8 0.06 200); }
+.hljs-tag { color: oklch(0.72 0.14 10); }
+.hljs-name { color: oklch(0.72 0.14 10); }
+.hljs-selector-class { color: oklch(0.75 0.12 80); }
+.hljs-selector-id { color: oklch(0.75 0.12 80); }
+
+/* ─────────────────────────────────────────────
+   滚动条样式 (Webkit)
+   ───────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: oklch(0.4 0 0 / 40%);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.5 0 0 / 60%);
+}

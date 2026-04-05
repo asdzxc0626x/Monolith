@@ -1,0 +1,27 @@
+{
+  "name": "monolith-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --port 8787",
+    "deploy": "wrangler deploy",
+    "db:migrate:local": "wrangler d1 execute monolith-db --local --file=src/migrations/0001_init.sql",
+    "db:migrate:remote": "wrangler d1 execute monolith-db --remote --file=src/migrations/0001_init.sql",
+    "db:seed:local": "wrangler d1 execute monolith-db --local --file=src/migrations/0002_seed.sql",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1024.0",
+    "@libsql/client": "^0.17.2",
+    "drizzle-orm": "^0.30.10",
+    "hono": "^4.7.0",
+    "postgres": "^3.4.9"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241230.0",
+    "drizzle-kit": "^0.21.2",
+    "typescript": "^5.7.0",
+    "wrangler": "^4.0.0"
+  }
+}

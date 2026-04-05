@@ -1,0 +1,19 @@
+name = "monolith-server"
+main = "src/index.ts"
+compatibility_date = "2024-12-30"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+# 非敏感配置变量（敏感的用 wrangler secret put）
+BLOG_NAME = "Monolith"
+
+# D1 数据库绑定
+[[d1_databases]]
+binding = "DB"
+database_name = "monolith-db"
+database_id = "local"  # 部署前需替换为真实 ID
+
+# R2 存储桶绑定
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "monolith-assets"

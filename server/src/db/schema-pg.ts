@@ -1,0 +1,62 @@
+/* ──────────────────────────────────────────────
+   PostgreSQL 版 Drizzle Schema
+   与 SQLite 版 (db/schema.ts) 功能完全一致
+   但使用 PostgreSQL 方言（serial, timestamp 等）
+   ────────────────────────────────────────────── */
+
+import { pgTable, serial, text, boolean, integer, timestamp, primaryKey } from "drizzle-orm/pg-core";
+
+/* ── 文章表 ────────────────────────────────── */
+export const pgPosts = pgTable("posts", {
+  id: serial("id").primaryKey(),
+  slug: text("slug").notNull().unique(),
+  title: text("title").notNull(),
+  content: text("content").notNull().default(""),
+  excerpt: text("excerpt").default(""),
+  coverColor: text("cover_color").default("from-gray-500/20 to-gray-600/20"),
+  published: boolean("published").notNull().default(true),
+  listed: boolean("listed").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/* ── 标签表 ────────────────────────────────── */
+export const pgTags = pgTable("tags", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+});
+
+/* ── 文章-标签关联表 ──────────────────────── */
+export const pgPostTags = pgTable(
+  "post_tags",
+  {
+    postId: integer("post_id")
+      .notNull()
+      .references(() => pgPosts.id, { onDelete: "cascade" }),
+    tagId: integer("tag_id")
+      .notNull()
+      .references(() => pgTags.id, { onDelete: "cascade" }),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.postId, table.tagId] }),
+  })
+);
+
+/* ── 独立页表 ──────────────────────────────── */
+export const pgPages = pgTable("pages", {
+  id: serial("id").primaryKey(),
+  slug: text("slug").notNull().unique(),
+  title: text("title").notNull(),
+  content: text("content").notNull().default(""),
+  sortOrder: integer("sort_order").notNull().default(0),
+  published: boolean("published").notNull().default(true),
+  showInNav: boolean("show_in_nav").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/* ── 设置表 ────────────────────────────────── */
+export const pgSettings = pgTable("settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+});
