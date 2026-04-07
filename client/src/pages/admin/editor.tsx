@@ -116,6 +116,8 @@ export function AdminEditor() {
     coverColor: "from-blue-500/20 to-cyan-500/20",
     tags: "",
     published: true,
+    pinned: false,
+    publishAt: "",
   });
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ text: "", type: "" as "" | "success" | "error" });
@@ -141,6 +143,8 @@ export function AdminEditor() {
           coverColor: post.coverColor || "",
           tags: post.tags.join(", "),
           published: post.published,
+          pinned: post.pinned,
+          publishAt: post.publishAt ? new Date(new Date(post.publishAt).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : "",
         });
         setAutoSlug(false);
       });
@@ -203,6 +207,8 @@ export function AdminEditor() {
         coverColor: form.coverColor,
         published: form.published,
         tags: tagsList,
+        pinned: form.pinned,
+        publishAt: form.publishAt ? new Date(form.publishAt).toISOString() : null,
       };
 
       if (isEdit && params.slug) {
@@ -390,6 +396,10 @@ export function AdminEditor() {
             <input type="checkbox" checked={form.published} onChange={(e) => updateField("published", e.target.checked)} className="rounded accent-foreground" />
             发布
           </label>
+          <label className="flex items-center gap-[5px] text-[12px] text-amber-500/60 hover:text-amber-500/80 cursor-pointer select-none transition-colors">
+            <input type="checkbox" checked={form.pinned} onChange={(e) => updateField("pinned", e.target.checked)} className="rounded accent-amber-500" />
+            置顶
+          </label>
           <button onClick={handleSave} disabled={saving} className="inline-flex items-center gap-[4px] h-[30px] px-[12px] rounded-md bg-foreground text-background text-[12px] font-medium hover:opacity-90 disabled:opacity-50 transition-opacity">
             <Save className="h-[11px] w-[11px]" />{saving ? "保存中..." : "保存"}
           </button>
@@ -427,6 +437,15 @@ export function AdminEditor() {
                     value={form.tags} onChange={(e) => updateField("tags", e.target.value)}
                     placeholder="Next.js, 前端"
                     className="h-[30px] w-full rounded-md border border-border/25 bg-background/20 px-[10px] text-[12px] text-foreground placeholder:text-muted-foreground/20 outline-none focus:border-foreground/15 transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="mb-[2px] block text-[10px] text-muted-foreground/35 uppercase tracking-wider">定时发布</label>
+                  <input
+                    type="datetime-local"
+                    value={form.publishAt}
+                    onChange={(e) => updateField("publishAt", e.target.value)}
+                    className="h-[30px] w-full rounded-md border border-border/25 bg-background/20 px-[10px] text-[12px] text-foreground placeholder:text-muted-foreground/20 outline-none focus:border-foreground/15 transition-colors dark:[color-scheme:dark]"
                   />
                 </div>
                 <div>

@@ -14,6 +14,9 @@ export function ArticleCard({ post }: { post: PostMeta }) {
         <div className={`h-[3px] w-full bg-gradient-to-r ${post.coverColor || "from-gray-500/20 to-gray-600/20"} opacity-60 transition-opacity duration-300 group-hover:opacity-100`} />
         <div className="p-[20px] lg:p-[24px]">
           <div className="mb-[12px] flex flex-wrap items-center gap-[8px]">
+            {post.pinned && (
+              <Badge variant="outline" className="h-[22px] rounded-[4px] px-[8px] text-[12px] font-normal tracking-normal border-amber-500/30 text-amber-500/80 bg-amber-500/10">📌</Badge>
+            )}
             {post.tags.slice(0, 2).map((tag) => (
               <Badge key={tag} variant="secondary" className="h-[22px] rounded-[4px] px-[8px] text-[12px] font-normal tracking-normal">{tag}</Badge>
             ))}

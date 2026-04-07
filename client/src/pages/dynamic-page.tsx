@@ -4,6 +4,7 @@ import { Link } from "wouter";
 import { Separator } from "@/components/ui/separator";
 import { renderMarkdown } from "@/lib/markdown";
 import { ArrowLeft } from "lucide-react";
+import { SeoHead } from "@/components/seo-head";
 
 type PageData = {
   slug: string; title: string; content: string;
@@ -20,13 +21,11 @@ export function DynamicPage() {
 
   useEffect(() => {
     if (!params.slug) return;
-    document.title = "加载中... | Monolith";
     fetch(`/api/pages/${params.slug}`)
       .then((r) => r.json())
       .then((data) => {
         if (data.error) { setError("页面不存在"); return; }
         setPage(data);
-        document.title = `${data.title} | Monolith`;
       })
       .catch(() => setError("页面加载失败"))
       .finally(() => setLoading(false));
@@ -54,6 +53,11 @@ export function DynamicPage() {
 
   return (
     <article className="mx-auto w-full max-w-[720px] py-[40px] lg:py-[56px]">
+      <SeoHead
+        title={page.title}
+        description={`${page.title} — Monolith 独立页面`}
+        url={`/page/${page.slug}`}
+      />
       <Link href="/" className="mb-[32px] inline-flex items-center gap-[6px] text-[13px] text-muted-foreground/60 transition-all duration-200 hover:text-foreground hover:-translate-x-[2px] animate-fade-in">
         <ArrowLeft className="h-[14px] w-[14px]" />返回首页
       </Link>

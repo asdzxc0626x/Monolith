@@ -1,0 +1,136 @@
+import { useEffect } from "react";
+
+type SeoProps = {
+  title?: string;
+  description?: string;
+  url?: string;
+  type?: "website" | "article";
+  image?: string;
+  publishedTime?: string;
+  tags?: string[];
+  siteName?: string;
+};
+
+const DEFAULT_SITE_NAME = "Monolith";
+const DEFAULT_DESCRIPTION = "书写代码、设计与边缘计算的个人博客。";
+
+/**
+ * SEO 头部组件
+ * 动态注入 <title>、<meta>、Open Graph、Twitter Card、Canonical URL
+ * 和 JSON-LD 结构化数据（文章页）
+ *
+ * 使用方式：
+ *   <SeoHead title="文章标题" description="..." url="/posts/slug" type="article" />
+ */
+export function SeoHead({
+  title,
+  description,
+  url,
+  type = "website",
+  image,
+  publishedTime,
+  tags,
+  siteName = DEFAULT_SITE_NAME,
+}: SeoProps) {
+  const fullTitle = title ? `${title} | ${siteName}` : `${siteName} — ${DEFAULT_DESCRIPTION}`;
+  const metaDescription = description || DEFAULT_DESCRIPTION;
+  const canonicalUrl = url ? `${window.location.origin}${url}` : window.location.href;
+  const ogImage = image || `${window.location.origin}/og-default.png`;
+
+  useEffect(() => {
+    // 设置标题
+    document.title = fullTitle;
+
+    // 辅助：设置或更新 meta 标签
+    const setMeta = (attr: string, key: string, content: string) => {
+      let el = document.querySelector(`meta[${attr}="${key}"]`) as HTMLMetaElement | null;
+      if (!el) {
+        el = document.createElement("meta");
+        el.setAttribute(attr, key);
+        document.head.appendChild(el);
+      }
+      el.setAttribute("content", content);
+    };
+
+    // 辅助：设置或更新 link 标签
+    const setLink = (rel: string, href: string) => {
+      let el = document.querySelector(`link[rel="${rel}"]`) as HTMLLinkElement | null;
+      if (!el) {
+        el = document.createElement("link");
+        el.setAttribute("rel", rel);
+        document.head.appendChild(el);
+      }
+      el.setAttribute("href", href);
+    };
+
+    // Meta Description
+    setMeta("name", "description", metaDescription);
+
+    // Canonical URL
+    setLink("canonical", canonicalUrl);
+
+    // Open Graph
+    setMeta("property", "og:title", title || siteName);
+    setMeta("property", "og:description", metaDescription);
+    setMeta("property", "og:type", type === "article" ? "article" : "website");
+    setMeta("property", "og:url", canonicalUrl);
+    setMeta("property", "og:site_name", siteName);
+    setMeta("property", "og:image", ogImage);
+    setMeta("property", "og:locale", "zh_CN");
+
+    // Twitter Card
+    setMeta("name", "twitter:card", "summary_large_image");
+    setMeta("name", "twitter:title", title || siteName);
+    setMeta("name", "twitter:description", metaDescription);
+    setMeta("name", "twitter:image", ogImage);
+
+    // Article 专属
+    if (type === "article" && publishedTime) {
+      setMeta("property", "article:published_time", publishedTime);
+    }
+    if (type === "article" && tags?.length) {
+      tags.forEach((tag) => setMeta("property", "article:tag", tag));
+    }
+
+    // JSON-LD 结构化数据（仅文章页）
+    let ldScript = document.querySelector('script[data-seo="json-ld"]') as HTMLScriptElement | null;
+    if (type === "article") {
+      const jsonLd = {
+        "@context": "https://schema.org",
+        "@type": "BlogPosting",
+        headline: title,
+        description: metaDescription,
+        url: canonicalUrl,
+        image: ogImage,
+        datePublished: publishedTime,
+        author: {
+          "@type": "Person",
+          name: siteName,
+        },
+        publisher: {
+          "@type": "Organization",
+          name: siteName,
+        },
+        ...(tags?.length ? { keywords: tags.join(", ") } : {}),
+      };
+
+      if (!ldScript) {
+        ldScript = document.createElement("script");
+        ldScript.setAttribute("type", "application/ld+json");
+        ldScript.setAttribute("data-seo", "json-ld");
+        document.head.appendChild(ldScript);
+      }
+      ldScript.textContent = JSON.stringify(jsonLd);
+    } else if (ldScript) {
+      ldScript.remove();
+    }
+
+    // 组件卸载时清理 JSON-LD
+    return () => {
+      const script = document.querySelector('script[data-seo="json-ld"]');
+      script?.remove();
+    };
+  }, [fullTitle, metaDescription, canonicalUrl, ogImage, type, publishedTime, title, siteName, tags]);
+
+  return null; // 纯副作用组件，不渲染 DOM
+}

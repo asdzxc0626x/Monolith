@@ -5,11 +5,11 @@
 
 import { drizzle } from "drizzle-orm/d1";
 import { eq, desc, sql } from "drizzle-orm";
-import { posts, tags, postTags, pages } from "../../db/schema";
+import { posts, tags, postTags, pages, comments } from "../../db/schema";
 import type {
   IDatabase, Post, PostSummary, Tag, Page, PageSummary,
   CreatePostInput, UpdatePostInput, UpsertPageInput,
-  BackupData, ImportResult,
+  BackupData, ImportResult, ViewStats, Comment, CreateCommentInput,
 } from "../interfaces";
 
 type DrizzleD1 = ReturnType<typeof drizzle>;
@@ -58,6 +58,27 @@ export class D1Adapter implements IDatabase {
     );
   }
 
+  private async ensureViewCountColumn(): Promise<void> {
+    try {
+      await this.db.run(sql`ALTER TABLE posts ADD COLUMN view_count INTEGER NOT NULL DEFAULT 0`);
+    } catch {
+      /* 字段已存在，忽略 */
+    }
+  }
+
+  private async ensurePinnedColumn(): Promise<void> {
+    try {
+      await this.db.run(sql`ALTER TABLE posts ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0`);
+    } catch {
+      /* 字段已存在，忽略 */
+    }
+    try {
+      await this.db.run(sql`ALTER TABLE posts ADD COLUMN publish_at TEXT`);
+    } catch {
+      /* 字段已存在，忽略 */
+    }
+  }
+
   private async ensurePagesTable(): Promise<void> {
     await this.db.run(sql`CREATE TABLE IF NOT EXISTS pages (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -72,6 +93,18 @@ export class D1Adapter implements IDatabase {
     )`);
   }
 
+  private async ensureCommentsTable(): Promise<void> {
+    await this.db.run(sql`CREATE TABLE IF NOT EXISTS comments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+      author_name TEXT NOT NULL,
+      author_email TEXT NOT NULL DEFAULT '',
+      content TEXT NOT NULL,
+      approved INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`);
+  }
+
   /* ── 文章 ─────────────────────── */
 
   async getPublishedPosts(): Promise<PostSummary[]> {
@@ -83,10 +116,14 @@ export class D1Adapter implements IDatabase {
         excerpt: posts.excerpt,
         coverColor: posts.coverColor,
         createdAt: posts.createdAt,
+        pinned: posts.pinned,
+        publishAt: posts.publishAt,
       })
       .from(posts)
-      .where(eq(posts.published, true))
-      .orderBy(desc(posts.createdAt));
+      .where(
+        sql`${posts.published} = 1 AND (${posts.publishAt} IS NULL OR ${posts.publishAt} <= datetime('now'))`
+      )
+      .orderBy(desc(posts.pinned), desc(posts.createdAt));
 
     return Promise.all(
       allPosts.map(async (post) => ({
@@ -97,6 +134,8 @@ export class D1Adapter implements IDatabase {
         coverColor: post.coverColor || "",
         createdAt: post.createdAt,
         tags: await this.getPostTags(post.id),
+        pinned: post.pinned,
+        publishAt: post.publishAt,
       }))
     );
   }
@@ -119,6 +158,9 @@ export class D1Adapter implements IDatabase {
         listed: post.listed,
         createdAt: post.createdAt,
         updatedAt: post.updatedAt,
+        viewCount: post.viewCount ?? 0,
+        pinned: post.pinned,
+        publishAt: post.publishAt,
         tags: await this.getPostTags(post.id),
       }))
     );
@@ -144,6 +186,9 @@ export class D1Adapter implements IDatabase {
       listed: post.listed,
       createdAt: post.createdAt,
       updatedAt: post.updatedAt,
+      viewCount: post.viewCount ?? 0,
+      pinned: post.pinned,
+      publishAt: post.publishAt,
       tags: await this.getPostTags(post.id),
     };
   }
@@ -159,6 +204,8 @@ export class D1Adapter implements IDatabase {
         coverColor: data.coverColor || "from-gray-500/20 to-gray-600/20",
         published: data.published ?? true,
         listed: data.listed ?? true,
+        pinned: data.pinned ?? false,
+        publishAt: data.publishAt || null,
       })
       .returning();
 
@@ -177,6 +224,9 @@ export class D1Adapter implements IDatabase {
       listed: newPost.listed,
       createdAt: newPost.createdAt,
       updatedAt: newPost.updatedAt,
+      viewCount: 0,
+      pinned: newPost.pinned,
+      publishAt: newPost.publishAt,
     };
   }
 
@@ -199,6 +249,8 @@ export class D1Adapter implements IDatabase {
         ...(data.coverColor !== undefined && { coverColor: data.coverColor }),
         ...(data.published !== undefined && { published: data.published }),
         ...(data.listed !== undefined && { listed: data.listed }),
+        ...(data.pinned !== undefined && { pinned: data.pinned }),
+        ...(data.publishAt !== undefined && { publishAt: data.publishAt }),
         updatedAt: sql`datetime('now')`,
       })
       .where(eq(posts.id, existing.id))
@@ -219,6 +271,9 @@ export class D1Adapter implements IDatabase {
       listed: updated.listed,
       createdAt: updated.createdAt,
       updatedAt: updated.updatedAt,
+      viewCount: updated.viewCount ?? 0,
+      pinned: updated.pinned,
+      publishAt: updated.publishAt,
     };
   }
 
@@ -462,10 +517,12 @@ export class D1Adapter implements IDatabase {
         excerpt: posts.excerpt,
         coverColor: posts.coverColor,
         createdAt: posts.createdAt,
+        pinned: posts.pinned,
+        publishAt: posts.publishAt,
       })
       .from(posts)
       .where(
-        sql`${posts.published} = 1 AND (${posts.title} LIKE ${pattern} OR ${posts.content} LIKE ${pattern} OR ${posts.excerpt} LIKE ${pattern})`
+        sql`${posts.published} = 1 AND (${posts.publishAt} IS NULL OR ${posts.publishAt} <= datetime('now')) AND (${posts.title} LIKE ${pattern} OR ${posts.content} LIKE ${pattern} OR ${posts.excerpt} LIKE ${pattern})`
       )
       .orderBy(desc(posts.createdAt))
       .limit(limit);
@@ -479,8 +536,47 @@ export class D1Adapter implements IDatabase {
         coverColor: post.coverColor || "",
         createdAt: post.createdAt,
         tags: await this.getPostTags(post.id),
+        pinned: post.pinned,
+        publishAt: post.publishAt,
       }))
     );
+  }
+
+  /* ── 阅读统计 ───────────────────── */
+
+  async incrementViewCount(slug: string): Promise<void> {
+    await this.ensureViewCountColumn();
+    await this.db.run(
+      sql`UPDATE posts SET view_count = view_count + 1 WHERE slug = ${slug}`
+    );
+  }
+
+  async getViewStats(topN = 10): Promise<ViewStats> {
+    await this.ensureViewCountColumn();
+    const totalResult = await this.db.run(
+      sql`SELECT COALESCE(SUM(view_count), 0) as total FROM posts`
+    );
+    const totalViews = (totalResult.results?.[0] as { total: number } | undefined)?.total ?? 0;
+
+    const topPosts = await this.db
+      .select({
+        slug: posts.slug,
+        title: posts.title,
+        viewCount: posts.viewCount,
+      })
+      .from(posts)
+      .where(eq(posts.published, true))
+      .orderBy(desc(posts.viewCount))
+      .limit(topN);
+
+    return {
+      totalViews,
+      topPosts: topPosts.map((p) => ({
+        slug: p.slug,
+        title: p.title,
+        viewCount: p.viewCount ?? 0,
+      })),
+    };
   }
 
   /* ── RSS 专用 ─────────────────── */
@@ -501,5 +597,111 @@ export class D1Adapter implements IDatabase {
 
     return rows.map((r) => ({ ...r, excerpt: r.excerpt || "" }));
   }
-}
 
+  /* ── 评论 ─────────────────── */
+
+  async getApprovedComments(postSlug: string): Promise<Comment[]> {
+    await this.ensureCommentsTable();
+    const result = await this.db.run(
+      sql`SELECT c.id, c.post_id, c.author_name, c.author_email, c.content, c.approved, c.created_at
+          FROM comments c
+          INNER JOIN posts p ON c.post_id = p.id
+          WHERE p.slug = ${postSlug} AND c.approved = 1
+          ORDER BY c.created_at ASC`
+    );
+    type Row = Record<string, unknown>;
+    return (result.results as Row[] || []).map((r) => ({
+      id: r.id as number,
+      postId: r.post_id as number,
+      authorName: r.author_name as string,
+      authorEmail: r.author_email as string || "",
+      content: r.content as string,
+      approved: Boolean(r.approved),
+      createdAt: r.created_at as string,
+    }));
+  }
+
+  async addComment(input: CreateCommentInput): Promise<Comment> {
+    await this.ensureCommentsTable();
+    // 查找文章 ID
+    const [post] = await this.db
+      .select({ id: posts.id })
+      .from(posts)
+      .where(eq(posts.slug, input.postSlug))
+      .limit(1);
+    if (!post) throw new Error("文章不存在");
+
+    const [newComment] = await this.db
+      .insert(comments)
+      .values({
+        postId: post.id,
+        authorName: input.authorName,
+        authorEmail: input.authorEmail || "",
+        content: input.content,
+        approved: false,
+      })
+      .returning();
+
+    return {
+      id: newComment.id,
+      postId: newComment.postId,
+      authorName: newComment.authorName,
+      authorEmail: newComment.authorEmail,
+      content: newComment.content,
+      approved: newComment.approved,
+      createdAt: newComment.createdAt,
+    };
+  }
+
+  async getAllComments(): Promise<(Comment & { postSlug: string; postTitle: string })[]> {
+    await this.ensureCommentsTable();
+    const result = await this.db.run(
+      sql`SELECT c.id, c.post_id, c.author_name, c.author_email, c.content, c.approved, c.created_at,
+                 p.slug as post_slug, p.title as post_title
+          FROM comments c
+          INNER JOIN posts p ON c.post_id = p.id
+          ORDER BY c.created_at DESC`
+    );
+    type JoinRow = Record<string, unknown>;
+    return (result.results as JoinRow[] || []).map((r) => ({
+      id: r.id as number,
+      postId: r.post_id as number,
+      authorName: r.author_name as string,
+      authorEmail: r.author_email as string || "",
+      content: r.content as string,
+      approved: Boolean(r.approved),
+      createdAt: r.created_at as string,
+      postSlug: r.post_slug as string,
+      postTitle: r.post_title as string,
+    }));
+  }
+
+  async approveComment(id: number): Promise<boolean> {
+    await this.ensureCommentsTable();
+    const result = await this.db
+      .update(comments)
+      .set({ approved: true })
+      .where(eq(comments.id, id))
+      .returning();
+    return result.length > 0;
+  }
+
+  async deleteComment(id: number): Promise<boolean> {
+    await this.ensureCommentsTable();
+    const result = await this.db
+      .delete(comments)
+      .where(eq(comments.id, id))
+      .returning();
+    return result.length > 0;
+  }
+
+  async getCommentCount(postSlug: string): Promise<number> {
+    await this.ensureCommentsTable();
+    const result = await this.db.run(
+      sql`SELECT COUNT(*) as count FROM comments c
+          INNER JOIN posts p ON c.post_id = p.id
+          WHERE p.slug = ${postSlug} AND c.approved = 1`
+    );
+    return (result.results?.[0] as { count: number } | undefined)?.count ?? 0;
+  }
+}

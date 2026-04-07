@@ -41,6 +41,22 @@ hljs.registerLanguage("diff", diff);
 // 配置 marked
 const renderer = new marked.Renderer();
 
+// 标题：注入 id 属性（用于 TOC 锚点）
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/<[^>]*>/g, "")      // 去除 HTML 标签
+    .replace(/[^\w\u4e00-\u9fff\s-]/g, "") // 保留中文、字母、数字、空格、连字符
+    .replace(/\s+/g, "-")          // 空格转连字符
+    .replace(/-+/g, "-")           // 合并连续连字符
+    .replace(/^-|-$/g, "");        // 去除首尾连字符
+}
+
+renderer.heading = ({ text, depth }: { text: string; depth: number }) => {
+  const id = slugify(text);
+  return `<h${depth} id="${id}">${text}</h${depth}>`;
+};
+
 // 代码块：高亮 + 语言标签
 renderer.code = ({ text, lang }: { text: string; lang?: string }) => {
   const language = lang && hljs.getLanguage(lang) ? lang : "";
@@ -92,4 +108,39 @@ function escapeHtml(s: string): string {
  */
 export function renderMarkdown(md: string): string {
   return marked.parse(md, { async: false }) as string;
+}
+
+/* ── TOC 辅助函数 ─────────────────────────── */
+
+export type TocHeading = {
+  id: string;
+  text: string;
+  level: number;
+};
+
+/**
+ * 从 Markdown 源文本中提取标题列表（h2-h4）
+ * 用于生成 Table of Contents
+ */
+export function extractHeadings(md: string): TocHeading[] {
+  const headings: TocHeading[] = [];
+  // 匹配 Markdown 标题语法：## ~ ####
+  const regex = /^(#{2,4})\s+(.+)$/gm;
+  let match;
+  while ((match = regex.exec(md)) !== null) {
+    const level = match[1].length;
+    const rawText = match[2].trim();
+    // 去除 Markdown 行内格式（粗体、斜体、代码等）
+    const plainText = rawText
+      .replace(/\*\*(.*?)\*\*/g, "$1")
+      .replace(/\*(.*?)\*/g, "$1")
+      .replace(/`(.*?)`/g, "$1")
+      .replace(/\[(.*?)\]\(.*?\)/g, "$1");
+    headings.push({
+      id: slugify(plainText),
+      text: plainText,
+      level,
+    });
+  }
+  return headings;
 }

@@ -7,11 +7,11 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { eq, desc, sql } from "drizzle-orm";
-import { pgPosts, pgTags, pgPostTags, pgPages, pgSettings } from "../../db/schema-pg";
+import { pgPosts, pgTags, pgPostTags, pgPages, pgSettings, pgComments } from "../../db/schema-pg";
 import type {
   IDatabase, Post, PostSummary, Tag, Page, PageSummary,
   CreatePostInput, UpdatePostInput, UpsertPageInput,
-  BackupData, ImportResult,
+  BackupData, ImportResult, ViewStats, Comment, CreateCommentInput,
 } from "../interfaces";
 
 type DrizzlePG = ReturnType<typeof drizzle>;
@@ -44,9 +44,20 @@ export class PostgresAdapter implements IDatabase {
         published BOOLEAN NOT NULL DEFAULT true,
         listed BOOLEAN NOT NULL DEFAULT true,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        view_count INTEGER NOT NULL DEFAULT 0
       )
     `;
+    /* 确保旧表也有对应字段 */
+    await this.client`
+      ALTER TABLE posts ADD COLUMN IF NOT EXISTS view_count INTEGER NOT NULL DEFAULT 0
+    `.catch(() => {});
+    await this.client`
+      ALTER TABLE posts ADD COLUMN IF NOT EXISTS pinned BOOLEAN NOT NULL DEFAULT false
+    `.catch(() => {});
+    await this.client`
+      ALTER TABLE posts ADD COLUMN IF NOT EXISTS publish_at TIMESTAMPTZ
+    `.catch(() => {});
     await this.client`
       CREATE TABLE IF NOT EXISTS tags (
         id SERIAL PRIMARY KEY,
@@ -77,6 +88,17 @@ export class PostgresAdapter implements IDatabase {
       CREATE TABLE IF NOT EXISTS settings (
         key TEXT PRIMARY KEY,
         value TEXT NOT NULL
+      )
+    `;
+    await this.client`
+      CREATE TABLE IF NOT EXISTS comments (
+        id SERIAL PRIMARY KEY,
+        post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+        author_name TEXT NOT NULL,
+        author_email TEXT NOT NULL DEFAULT '',
+        content TEXT NOT NULL,
+        approved BOOLEAN NOT NULL DEFAULT false,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `;
   }
@@ -127,10 +149,14 @@ export class PostgresAdapter implements IDatabase {
         excerpt: pgPosts.excerpt,
         coverColor: pgPosts.coverColor,
         createdAt: pgPosts.createdAt,
+        pinned: pgPosts.pinned,
+        publishAt: pgPosts.publishAt,
       })
       .from(pgPosts)
-      .where(eq(pgPosts.published, true))
-      .orderBy(desc(pgPosts.createdAt));
+      .where(
+        sql`${pgPosts.published} = true AND (${pgPosts.publishAt} IS NULL OR ${pgPosts.publishAt} <= NOW())`
+      )
+      .orderBy(desc(pgPosts.pinned), desc(pgPosts.createdAt));
 
     return Promise.all(
       allPosts.map(async (post) => ({
@@ -141,6 +167,8 @@ export class PostgresAdapter implements IDatabase {
         coverColor: post.coverColor || "",
         createdAt: this.ts(post.createdAt),
         tags: await this.getPostTags(post.id),
+        pinned: post.pinned,
+        publishAt: this.ts(post.publishAt),
       }))
     );
   }
@@ -163,6 +191,9 @@ export class PostgresAdapter implements IDatabase {
         listed: post.listed,
         createdAt: this.ts(post.createdAt),
         updatedAt: this.ts(post.updatedAt),
+        viewCount: post.viewCount ?? 0,
+        pinned: post.pinned,
+        publishAt: this.ts(post.publishAt),
         tags: await this.getPostTags(post.id),
       }))
     );
@@ -188,6 +219,9 @@ export class PostgresAdapter implements IDatabase {
       listed: post.listed,
       createdAt: this.ts(post.createdAt),
       updatedAt: this.ts(post.updatedAt),
+      viewCount: post.viewCount ?? 0,
+      pinned: post.pinned,
+      publishAt: this.ts(post.publishAt),
       tags: await this.getPostTags(post.id),
     };
   }
@@ -203,6 +237,8 @@ export class PostgresAdapter implements IDatabase {
         coverColor: data.coverColor || "from-gray-500/20 to-gray-600/20",
         published: data.published ?? true,
         listed: data.listed ?? true,
+        pinned: data.pinned ?? false,
+        publishAt: data.publishAt ? sql`${data.publishAt}::timestamptz` : null,
       })
       .returning();
 
@@ -221,6 +257,9 @@ export class PostgresAdapter implements IDatabase {
       listed: newPost.listed,
       createdAt: this.ts(newPost.createdAt),
       updatedAt: this.ts(newPost.updatedAt),
+      viewCount: 0,
+      pinned: newPost.pinned,
+      publishAt: this.ts(newPost.publishAt),
     };
   }
 
@@ -243,6 +282,8 @@ export class PostgresAdapter implements IDatabase {
         ...(data.coverColor !== undefined && { coverColor: data.coverColor }),
         ...(data.published !== undefined && { published: data.published }),
         ...(data.listed !== undefined && { listed: data.listed }),
+        ...(data.pinned !== undefined && { pinned: data.pinned }),
+        ...(data.publishAt !== undefined && { publishAt: data.publishAt ? sql`${data.publishAt}::timestamptz` : null }),
         updatedAt: sql`NOW()`,
       })
       .where(eq(pgPosts.id, existing.id))
@@ -263,6 +304,9 @@ export class PostgresAdapter implements IDatabase {
       listed: updated.listed,
       createdAt: this.ts(updated.createdAt),
       updatedAt: this.ts(updated.updatedAt),
+      viewCount: updated.viewCount ?? 0,
+      pinned: updated.pinned,
+      publishAt: this.ts(updated.publishAt),
     };
   }
 
@@ -417,6 +461,9 @@ export class PostgresAdapter implements IDatabase {
         listed: p.listed,
         createdAt: this.ts(p.createdAt),
         updatedAt: this.ts(p.updatedAt),
+        viewCount: p.viewCount ?? 0,
+        pinned: p.pinned,
+        publishAt: this.ts(p.publishAt),
       })),
       tags: allTags,
       postTags: allPostTags,
@@ -461,6 +508,9 @@ export class PostgresAdapter implements IDatabase {
               excerpt: post.excerpt || "",
               coverColor: post.coverColor || "",
               published: post.published ?? true,
+              listed: post.listed ?? true,
+              pinned: post.pinned ?? false,
+              publishAt: post.publishAt ? sql`${post.publishAt}::timestamptz` : null,
               updatedAt: sql`NOW()`,
             }).where(eq(pgPosts.slug, post.slug));
             imported.posts++;
@@ -473,6 +523,9 @@ export class PostgresAdapter implements IDatabase {
             excerpt: post.excerpt || "",
             coverColor: post.coverColor || "",
             published: post.published ?? true,
+            listed: post.listed ?? true,
+            pinned: post.pinned ?? false,
+            publishAt: post.publishAt ? sql`${post.publishAt}::timestamptz` : null,
           });
           imported.posts++;
         }
@@ -499,10 +552,12 @@ export class PostgresAdapter implements IDatabase {
         excerpt: pgPosts.excerpt,
         coverColor: pgPosts.coverColor,
         createdAt: pgPosts.createdAt,
+        pinned: pgPosts.pinned,
+        publishAt: pgPosts.publishAt,
       })
       .from(pgPosts)
       .where(
-        sql`${pgPosts.published} = true AND (${pgPosts.title} ILIKE ${pattern} OR ${pgPosts.content} ILIKE ${pattern} OR ${pgPosts.excerpt} ILIKE ${pattern})`
+        sql`${pgPosts.published} = true AND (${pgPosts.publishAt} IS NULL OR ${pgPosts.publishAt} <= NOW()) AND (${pgPosts.title} ILIKE ${pattern} OR ${pgPosts.content} ILIKE ${pattern} OR ${pgPosts.excerpt} ILIKE ${pattern})`
       )
       .orderBy(desc(pgPosts.createdAt))
       .limit(limit);
@@ -516,8 +571,45 @@ export class PostgresAdapter implements IDatabase {
         coverColor: post.coverColor || "",
         createdAt: this.ts(post.createdAt),
         tags: await this.getPostTags(post.id),
+        pinned: post.pinned,
+        publishAt: this.ts(post.publishAt),
       }))
     );
+  }
+
+  /* ── 阅读统计 ───────────────────── */
+
+  async incrementViewCount(slug: string): Promise<void> {
+    await this.db
+      .update(pgPosts)
+      .set({ viewCount: sql`${pgPosts.viewCount} + 1` })
+      .where(eq(pgPosts.slug, slug));
+  }
+
+  async getViewStats(topN = 10): Promise<ViewStats> {
+    const [totalRow] = await this.db
+      .select({ total: sql<number>`COALESCE(SUM(${pgPosts.viewCount}), 0)` })
+      .from(pgPosts);
+
+    const topPosts = await this.db
+      .select({
+        slug: pgPosts.slug,
+        title: pgPosts.title,
+        viewCount: pgPosts.viewCount,
+      })
+      .from(pgPosts)
+      .where(eq(pgPosts.published, true))
+      .orderBy(desc(pgPosts.viewCount))
+      .limit(topN);
+
+    return {
+      totalViews: Number(totalRow?.total ?? 0),
+      topPosts: topPosts.map((p) => ({
+        slug: p.slug,
+        title: p.title,
+        viewCount: p.viewCount ?? 0,
+      })),
+    };
   }
 
   /* ── RSS 专用 ─────────────────── */
@@ -541,5 +633,106 @@ export class PostgresAdapter implements IDatabase {
       excerpt: r.excerpt || "",
       createdAt: this.ts(r.createdAt),
     }));
+  }
+
+  /* ── 评论 ─────────────────── */
+
+  async getApprovedComments(postSlug: string): Promise<Comment[]> {
+    type Row = { id: number; post_id: number; author_name: string; author_email: string; content: string; approved: boolean; created_at: Date };
+    const rows = await this.client<Row[]>`
+      SELECT c.id, c.post_id, c.author_name, c.author_email, c.content, c.approved, c.created_at
+      FROM comments c
+      INNER JOIN posts p ON c.post_id = p.id
+      WHERE p.slug = ${postSlug} AND c.approved = true
+      ORDER BY c.created_at ASC
+    `;
+    return rows.map((r) => ({
+      id: r.id,
+      postId: r.post_id,
+      authorName: r.author_name,
+      authorEmail: r.author_email || "",
+      content: r.content,
+      approved: r.approved,
+      createdAt: this.ts(r.created_at),
+    }));
+  }
+
+  async addComment(input: CreateCommentInput): Promise<Comment> {
+    // 查找文章 ID
+    const [post] = await this.db
+      .select({ id: pgPosts.id })
+      .from(pgPosts)
+      .where(eq(pgPosts.slug, input.postSlug))
+      .limit(1);
+    if (!post) throw new Error("文章不存在");
+
+    const [newComment] = await this.db
+      .insert(pgComments)
+      .values({
+        postId: post.id,
+        authorName: input.authorName,
+        authorEmail: input.authorEmail || "",
+        content: input.content,
+        approved: false,
+      })
+      .returning();
+
+    return {
+      id: newComment.id,
+      postId: newComment.postId,
+      authorName: newComment.authorName,
+      authorEmail: newComment.authorEmail,
+      content: newComment.content,
+      approved: newComment.approved,
+      createdAt: this.ts(newComment.createdAt),
+    };
+  }
+
+  async getAllComments(): Promise<(Comment & { postSlug: string; postTitle: string })[]> {
+    type Row = { id: number; post_id: number; author_name: string; author_email: string; content: string; approved: boolean; created_at: Date; post_slug: string; post_title: string };
+    const rows = await this.client<Row[]>`
+      SELECT c.id, c.post_id, c.author_name, c.author_email, c.content, c.approved, c.created_at,
+             p.slug as post_slug, p.title as post_title
+      FROM comments c
+      INNER JOIN posts p ON c.post_id = p.id
+      ORDER BY c.created_at DESC
+    `;
+    return rows.map((r) => ({
+      id: r.id,
+      postId: r.post_id,
+      authorName: r.author_name,
+      authorEmail: r.author_email || "",
+      content: r.content,
+      approved: r.approved,
+      createdAt: this.ts(r.created_at),
+      postSlug: r.post_slug,
+      postTitle: r.post_title,
+    }));
+  }
+
+  async approveComment(id: number): Promise<boolean> {
+    const result = await this.db
+      .update(pgComments)
+      .set({ approved: true })
+      .where(eq(pgComments.id, id))
+      .returning();
+    return result.length > 0;
+  }
+
+  async deleteComment(id: number): Promise<boolean> {
+    const result = await this.db
+      .delete(pgComments)
+      .where(eq(pgComments.id, id))
+      .returning();
+    return result.length > 0;
+  }
+
+  async getCommentCount(postSlug: string): Promise<number> {
+    const [row] = await this.client`
+      SELECT COUNT(*)::int as count FROM comments c
+      INNER JOIN posts p ON c.post_id = p.id
+      WHERE p.slug = ${postSlug} AND c.approved = true
+    `;
+    return row?.count ?? 0;
   }
 }

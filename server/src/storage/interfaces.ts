@@ -17,6 +17,9 @@ export type Post = {
   listed: boolean;
   createdAt: string;
   updatedAt: string;
+  viewCount: number;
+  pinned: boolean;
+  publishAt: string | null;
 };
 
 export type PostSummary = {
@@ -27,6 +30,8 @@ export type PostSummary = {
   coverColor: string;
   createdAt: string;
   tags: string[];
+  pinned: boolean;
+  publishAt: string | null;
 };
 
 export type Tag = {
@@ -62,6 +67,8 @@ export type CreatePostInput = {
   published?: boolean;
   listed?: boolean;
   tags?: string[];
+  pinned?: boolean;
+  publishAt?: string | null;
 };
 
 export type UpdatePostInput = {
@@ -73,6 +80,8 @@ export type UpdatePostInput = {
   published?: boolean;
   listed?: boolean;
   tags?: string[];
+  pinned?: boolean;
+  publishAt?: string | null;
 };
 
 export type UpsertPageInput = {
@@ -101,6 +110,28 @@ export type ImportResult = {
   posts: number;
   tags: number;
   settings: number;
+};
+
+export type ViewStats = {
+  totalViews: number;
+  topPosts: { slug: string; title: string; viewCount: number }[];
+};
+
+export type Comment = {
+  id: number;
+  postId: number;
+  authorName: string;
+  authorEmail: string;
+  content: string;
+  approved: boolean;
+  createdAt: string;
+};
+
+export type CreateCommentInput = {
+  postSlug: string;
+  authorName: string;
+  authorEmail?: string;
+  content: string;
 };
 
 /* ── 数据库抽象接口 ───────────────────────── */
@@ -142,8 +173,20 @@ export interface IDatabase {
   /* 搜索 */
   searchPosts(query: string, limit?: number): Promise<PostSummary[]>;
 
+  /* 阅读统计 */
+  incrementViewCount(slug: string): Promise<void>;
+  getViewStats(topN?: number): Promise<ViewStats>;
+
   /* RSS 专用快捷方法 */
   getRecentPublishedPosts(limit: number): Promise<Pick<Post, "slug" | "title" | "excerpt" | "content" | "createdAt">[]>;
+
+  /* 评论 */
+  getApprovedComments(postSlug: string): Promise<Comment[]>;
+  addComment(input: CreateCommentInput): Promise<Comment>;
+  getAllComments(): Promise<(Comment & { postSlug: string; postTitle: string })[]>;
+  approveComment(id: number): Promise<boolean>;
+  deleteComment(id: number): Promise<boolean>;
+  getCommentCount(postSlug: string): Promise<number>;
 }
 
 /* ── 对象存储抽象接口 ─────────────────────── */

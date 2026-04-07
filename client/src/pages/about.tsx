@@ -1,11 +1,14 @@
-import { useEffect } from "react";
 import { Separator } from "@/components/ui/separator";
+import { SeoHead } from "@/components/seo-head";
 
 export function AboutPage() {
-  useEffect(() => { document.title = "关于 | Monolith"; }, []);
-
   return (
     <div className="mx-auto w-full max-w-[720px] py-[40px] lg:py-[56px]">
+      <SeoHead
+        title="关于"
+        description="关于 Monolith 博客 —— 书写代码、设计与边缘计算的技术空间。"
+        url="/about"
+      />
       <h1 className="text-[28px] font-semibold tracking-[-0.02em]">关于</h1>
       <Separator className="my-[24px] bg-border/30" />
       <div className="prose-monolith">

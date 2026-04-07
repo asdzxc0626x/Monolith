@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { fetchPosts, type PostMeta } from "@/lib/api";
 import { AnimateIn } from "@/hooks/use-animate";
+import { SeoHead } from "@/components/seo-head";
 
 export function HomePage() {
   const [posts, setPosts] = useState<PostMeta[]>([]);
@@ -21,6 +22,7 @@ export function HomePage() {
 
   return (
     <div className="flex flex-col">
+      <SeoHead url="/" />
       <Hero />
       <Separator className="bg-border/30" />
       <div className="grid grid-cols-1 gap-[32px] py-[40px] lg:grid-cols-[1fr_280px] lg:gap-[40px]">

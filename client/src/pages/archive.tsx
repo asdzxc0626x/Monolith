@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { fetchPosts, type PostMeta } from "@/lib/api";
 import { AnimateIn } from "@/hooks/use-animate";
+import { SeoHead } from "@/components/seo-head";
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" });
@@ -14,7 +15,6 @@ export function ArchivePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    document.title = "归档 | Monolith";
     fetchPosts().then(setPosts).catch(console.error).finally(() => setLoading(false));
   }, []);
 
@@ -28,6 +28,7 @@ export function ArchivePage() {
 
   return (
     <div className="mx-auto w-full max-w-[720px] py-[40px] lg:py-[56px]">
+      <SeoHead title="归档" description={`共 ${posts.length} 篇文章，按时间倒序排列。`} url="/archive" />
       <div className="animate-fade-in-up">
         <h1 className="text-[28px] font-semibold tracking-[-0.02em]">归档</h1>
         <p className="mt-[8px] text-[14px] text-muted-foreground">共 {posts.length} 篇文章，按时间倒序排列。</p>

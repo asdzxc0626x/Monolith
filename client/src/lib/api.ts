@@ -9,6 +9,8 @@ export type PostMeta = {
   coverColor: string | null;
   createdAt: string;
   tags: string[];
+  pinned: boolean;
+  publishAt: string | null;
 };
 
 export type Post = PostMeta & {
@@ -16,6 +18,7 @@ export type Post = PostMeta & {
   published: boolean;
   listed: boolean;
   updatedAt: string;
+  viewCount: number;
 };
 
 /* ── 公开 API ──────────────────────────────── */
@@ -96,6 +99,8 @@ export async function createPost(data: {
   coverColor?: string;
   published?: boolean;
   tags?: string[];
+  pinned?: boolean;
+  publishAt?: string | null;
 }): Promise<Post> {
   const res = await fetch(`${API_BASE}/api/admin/posts`, {
     method: "POST",
@@ -137,4 +142,103 @@ export async function uploadImage(file: File): Promise<{ url: string }> {
   });
   if (!res.ok) throw new Error("上传失败");
   return res.json();
+}
+
+/* ── 阅读统计 ──────────────────────────────── */
+export type ViewStats = {
+  totalViews: number;
+  topPosts: { slug: string; title: string; viewCount: number }[];
+};
+
+export async function fetchViewStats(): Promise<ViewStats> {
+  const res = await fetch(`${API_BASE}/api/admin/stats`, {
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error("获取统计数据失败");
+  return res.json();
+}
+
+/* ── 评论 ──────────────────────────────────── */
+export type CommentData = {
+  id: number;
+  postId: number;
+  authorName: string;
+  authorEmail: string;
+  content: string;
+  approved: boolean;
+  createdAt: string;
+};
+
+export type AdminComment = CommentData & {
+  postSlug: string;
+  postTitle: string;
+};
+
+export async function fetchComments(slug: string): Promise<CommentData[]> {
+  const res = await fetch(`${API_BASE}/api/posts/${slug}/comments`);
+  if (!res.ok) throw new Error("获取评论失败");
+  return res.json();
+}
+
+export async function submitComment(slug: string, data: {
+  authorName: string;
+  authorEmail?: string;
+  content: string;
+  _hp?: string;
+}): Promise<{ success: boolean; message?: string; error?: string }> {
+  const res = await fetch(`${API_BASE}/api/posts/${slug}/comments`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  return res.json();
+}
+
+export async function fetchAdminComments(): Promise<AdminComment[]> {
+  const res = await fetch(`${API_BASE}/api/admin/comments`, {
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error("获取评论失败");
+  return res.json();
+}
+
+export async function approveComment(id: number): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/admin/comments/${id}/approve`, {
+    method: "POST",
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error("审核失败");
+}
+
+export async function deleteComment(id: number): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/admin/comments/${id}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error("删除失败");
+}
+
+/* ── 媒体管理 ──────────────────────────────── */
+export type MediaItem = {
+  key: string;
+  name: string;
+  url: string;
+  size: number;
+  uploaded: string;
+};
+
+export async function fetchMedia(): Promise<MediaItem[]> {
+  const res = await fetch(`${API_BASE}/api/admin/media`, {
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error("获取媒体列表失败");
+  return res.json();
+}
+
+export async function deleteMedia(key: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/admin/media/${key}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error("删除失败");
 }

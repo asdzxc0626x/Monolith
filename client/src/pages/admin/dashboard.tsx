@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link, useLocation } from "wouter";
-import { checkAuth, clearToken, fetchAdminPosts, deletePost, type Post } from "@/lib/api";
-import { Plus, Edit, Trash2, LogOut, Eye, FileText, Tag, Clock, Search, Settings, ExternalLink, Filter, HardDrive, StickyNote } from "lucide-react";
+import { checkAuth, clearToken, fetchAdminPosts, deletePost, fetchViewStats, type Post, type ViewStats } from "@/lib/api";
+import { Plus, Edit, Trash2, LogOut, Eye, FileText, Tag, Clock, Search, Settings, ExternalLink, Filter, HardDrive, StickyNote, TrendingUp, BarChart3, MessageCircle, Image as ImageIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 function timeAgo(d: string): string {
@@ -26,12 +26,14 @@ export function AdminDashboard() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterType>("all");
   const [selectedTag, setSelectedTag] = useState<string>("");
+  const [viewStats, setViewStats] = useState<ViewStats | null>(null);
 
   useEffect(() => {
     document.title = "管理后台 | Monolith";
     checkAuth().then((ok) => {
       if (!ok) { setLocation("/admin/login"); return; }
       fetchAdminPosts().then(setPosts).finally(() => setLoading(false));
+      fetchViewStats().then(setViewStats).catch(() => {});
     });
   }, [setLocation]);
 
@@ -97,6 +99,12 @@ export function AdminDashboard() {
           <Link href="/admin/pages" className="inline-flex items-center justify-center h-[34px] w-[34px] rounded-md border border-border/30 text-muted-foreground/50 hover:text-foreground hover:border-border/50 transition-colors" title="独立页">
             <StickyNote className="h-[14px] w-[14px]" />
           </Link>
+          <Link href="/admin/comments" className="inline-flex items-center justify-center h-[34px] w-[34px] rounded-md border border-border/30 text-muted-foreground/50 hover:text-foreground hover:border-border/50 transition-colors" title="评论管理">
+            <MessageCircle className="h-[14px] w-[14px]" />
+          </Link>
+          <Link href="/admin/media" className="inline-flex items-center justify-center h-[34px] w-[34px] rounded-md border border-border/30 text-muted-foreground/50 hover:text-foreground hover:border-border/50 transition-colors" title="媒体库">
+            <ImageIcon className="h-[14px] w-[14px]" />
+          </Link>
           <button onClick={handleLogout} className="inline-flex items-center justify-center h-[34px] w-[34px] rounded-md border border-border/30 text-muted-foreground/50 hover:text-foreground hover:border-border/50 transition-colors" title="退出登录">
             <LogOut className="h-[14px] w-[14px]" />
           </button>
@@ -140,12 +148,12 @@ export function AdminDashboard() {
         </button>
         <a href="/" target="_blank" className="rounded-lg border border-border/25 bg-card/10 hover:bg-card/20 p-[16px] text-left transition-all">
           <div className="flex items-center gap-[8px]">
-            <div className="flex h-[32px] w-[32px] items-center justify-center rounded-md bg-foreground/5">
-              <ExternalLink className="h-[14px] w-[14px] text-muted-foreground/50" />
+            <div className="flex h-[32px] w-[32px] items-center justify-center rounded-md bg-purple-500/10">
+              <TrendingUp className="h-[14px] w-[14px] text-purple-400" />
             </div>
             <div>
-              <p className="text-[13px] font-medium leading-none text-muted-foreground/60">查看前台</p>
-              <p className="text-[11px] text-muted-foreground/30 mt-[3px]">新窗口打开</p>
+              <p className="text-[20px] font-semibold leading-none">{viewStats?.totalViews?.toLocaleString() ?? "—"}</p>
+              <p className="text-[11px] text-muted-foreground/40 mt-[2px]">总浏览量</p>
             </div>
           </div>
         </a>
@@ -209,16 +217,27 @@ export function AdminDashboard() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-[8px] mb-[3px]">
                   <Link href={`/admin/editor/${post.slug}`} className="text-[14px] font-medium text-foreground truncate hover:text-foreground/80 transition-colors">{post.title}</Link>
+                  {post.pinned && (
+                    <Badge variant="outline" className="h-[16px] rounded-[3px] px-[5px] text-[9px] font-normal text-amber-500/80 border-amber-500/30">置顶</Badge>
+                  )}
                   {!post.published && (
                     <Badge variant="outline" className="h-[16px] rounded-[3px] px-[5px] text-[9px] font-normal text-amber-400/70 border-amber-400/20">草稿</Badge>
                   )}
                 </div>
                 <div className="flex items-center gap-[6px] text-[11px] text-muted-foreground/35">
                   <span>{timeAgo(post.updatedAt || post.createdAt)}</span>
+                  <span className="text-border/40">·</span>
+                  <span className="inline-flex items-center gap-[2px]"><Eye className="h-[10px] w-[10px]" />{(post.viewCount ?? 0).toLocaleString()}</span>
                   {post.tags.length > 0 && (
                     <>
                       <span className="text-border/40">·</span>
                       <span>{post.tags.slice(0, 3).join(", ")}</span>
+                    </>
+                  )}
+                  {post.publishAt && (
+                    <>
+                      <span className="text-border/40">·</span>
+                      <span className="text-blue-400/70">定时: {new Date(post.publishAt).toLocaleDateString("zh-CN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
                     </>
                   )}
                 </div>
@@ -263,6 +282,30 @@ export function AdminDashboard() {
                 </button>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* ─── 热门文章 Top 10 ─── */}
+      {viewStats && viewStats.topPosts.length > 0 && (
+        <div className="mt-[24px]">
+          <h2 className="mb-[10px] text-[12px] font-medium text-muted-foreground/40 uppercase tracking-[0.06em]">
+            <BarChart3 className="inline h-[11px] w-[11px] mr-[4px]" />热门文章
+          </h2>
+          <div className="rounded-lg border border-border/25 overflow-hidden">
+            {viewStats.topPosts.map((item, i) => (
+              <div key={item.slug} className={`flex items-center gap-[12px] px-[18px] py-[10px] ${i < viewStats.topPosts.length - 1 ? "border-b border-border/12" : ""} hover:bg-card/15 transition-colors`}>
+                <span className={`text-[14px] font-semibold w-[24px] text-center shrink-0 ${
+                  i === 0 ? "text-amber-400" : i === 1 ? "text-muted-foreground/60" : i === 2 ? "text-amber-700/60" : "text-muted-foreground/25"
+                }`}>{i + 1}</span>
+                <Link href={`/posts/${item.slug}`} className="flex-1 text-[13px] text-foreground/80 hover:text-foreground truncate transition-colors">
+                  {item.title}
+                </Link>
+                <span className="text-[11px] text-muted-foreground/35 shrink-0 inline-flex items-center gap-[3px]">
+                  <Eye className="h-[10px] w-[10px]" />{item.viewCount.toLocaleString()}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       )}

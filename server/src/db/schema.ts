@@ -17,6 +17,9 @@ export const posts = sqliteTable("posts", {
   updatedAt: text("updated_at")
     .notNull()
     .default(sql`(datetime('now'))`),
+  viewCount: integer("view_count").notNull().default(0),
+  pinned: integer("pinned", { mode: "boolean" }).notNull().default(false),
+  publishAt: text("publish_at"),
 });
 
 /* ── 标签表 ────────────────────────────────── */
@@ -36,7 +39,9 @@ export const postTags = sqliteTable(
       .notNull()
       .references(() => tags.id, { onDelete: "cascade" }),
   },
-  (table) => [primaryKey({ columns: [table.postId, table.tagId] })]
+  (table) => ({
+    pk: primaryKey({ columns: [table.postId, table.tagId] })
+  })
 );
 
 /* ── 独立页表 ──────────────────────────────── */
@@ -56,3 +61,17 @@ export const pages = sqliteTable("pages", {
     .default(sql`(datetime('now'))`),
 });
 
+/* ── 评论表 ──────────────────────────────── */
+export const comments = sqliteTable("comments", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  postId: integer("post_id")
+    .notNull()
+    .references(() => posts.id, { onDelete: "cascade" }),
+  authorName: text("author_name").notNull(),
+  authorEmail: text("author_email").notNull().default(""),
+  content: text("content").notNull(),
+  approved: integer("approved", { mode: "boolean" }).notNull().default(false),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});

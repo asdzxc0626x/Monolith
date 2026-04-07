@@ -62,12 +62,26 @@ app.get("/api/search", async (c) => {
   return c.json(results);
 });
 
-// 获取单篇文章
+// 获取单篇文章（同时异步递增浏览量）
 app.get("/api/posts/:slug", async (c) => {
   const slug = c.req.param("slug");
   const db = c.get("db");
   const post = await db.getPostBySlug(slug);
   if (!post) return c.json({ error: "文章未找到" }, 404);
+
+  // 异步递增浏览量——不阻塞响应
+  try {
+    const viewPromise = db.incrementViewCount(slug);
+    // 边缘环境中使用 waitUntil 确保异步任务完成
+    if (c.executionCtx?.waitUntil) {
+      c.executionCtx.waitUntil(viewPromise);
+    } else {
+      viewPromise.catch(() => {});
+    }
+  } catch {
+    /* 浏览量统计失败不影响文章返回 */
+  }
+
   return c.json(post);
 });
 
@@ -76,6 +90,48 @@ app.get("/api/tags", async (c) => {
   const db = c.get("db");
   const allTags = await db.getAllTags();
   return c.json(allTags);
+});
+
+// 获取文章评论（仅已审核）
+app.get("/api/posts/:slug/comments", async (c) => {
+  const slug = c.req.param("slug");
+  const db = c.get("db");
+  const comments = await db.getApprovedComments(slug);
+  return c.json(comments);
+});
+
+// 提交评论（公开接口，需审核后才显示）
+app.post("/api/posts/:slug/comments", async (c) => {
+  const slug = c.req.param("slug");
+  const body = await c.req.json<{
+    authorName: string;
+    authorEmail?: string;
+    content: string;
+    _hp?: string; // honeypot 反垃圾字段
+  }>();
+
+  // Honeypot 反垃圾：如果隐藏字段被填写，静默拒绝
+  if (body._hp) return c.json({ success: true, message: "评论已提交，等待审核" });
+
+  if (!body.authorName?.trim() || !body.content?.trim()) {
+    return c.json({ error: "昵称和评论内容不能为空" }, 400);
+  }
+  if (body.content.length > 2000) {
+    return c.json({ error: "评论内容不能超过 2000 字" }, 400);
+  }
+
+  const db = c.get("db");
+  try {
+    await db.addComment({
+      postSlug: slug,
+      authorName: body.authorName.trim(),
+      authorEmail: body.authorEmail?.trim() || "",
+      content: body.content.trim(),
+    });
+    return c.json({ success: true, message: "评论已提交，等待审核" });
+  } catch (err) {
+    return c.json({ error: err instanceof Error ? err.message : "提交失败" }, 400);
+  }
 });
 
 // 公开：获取前台需要的设置（不含敏感信息）
@@ -139,6 +195,77 @@ ${items}
   });
 });
 
+// sitemap.xml — 动态站点地图
+app.get("/sitemap.xml", async (c) => {
+  const db = c.get("db");
+  const siteUrl = new URL(c.req.url).origin;
+
+  const allPosts = await db.getRecentPublishedPosts(1000);
+  const allPages = await db.getPublishedPages();
+
+  const escXml = (s: string) =>
+    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+  const urls: string[] = [];
+
+  // 首页
+  urls.push(`  <url>
+    <loc>${escXml(siteUrl)}/</loc>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>`);
+
+  // 归档页
+  urls.push(`  <url>
+    <loc>${escXml(siteUrl)}/archive</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>`);
+
+  // 文章
+  for (const post of allPosts) {
+    urls.push(`  <url>
+    <loc>${escXml(siteUrl)}/posts/${escXml(post.slug)}</loc>
+    <lastmod>${new Date(post.createdAt).toISOString().split("T")[0]}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>`);
+  }
+
+  // 独立页面
+  for (const page of allPages) {
+    urls.push(`  <url>
+    <loc>${escXml(siteUrl)}/pages/${escXml(page.slug)}</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>`);
+  }
+
+  const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urls.join("\n")}
+</urlset>`;
+
+  return new Response(sitemap, {
+    headers: { "Content-Type": "application/xml; charset=utf-8", "Cache-Control": "public, max-age=3600" },
+  });
+});
+
+// robots.txt — 爬虫规则
+app.get("/robots.txt", (c) => {
+  const siteUrl = new URL(c.req.url).origin;
+  const txt = `User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /api/admin
+
+Sitemap: ${siteUrl}/sitemap.xml
+`;
+  return new Response(txt, {
+    headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=86400" },
+  });
+});
+
 /* ── 认证 API ──────────────────────────────── */
 
 // 登录
@@ -197,6 +324,40 @@ app.get("/api/admin/posts", async (c) => {
   return c.json(result);
 });
 
+// 阅读统计数据
+app.get("/api/admin/stats", async (c) => {
+  const db = c.get("db");
+  const stats = await db.getViewStats(10);
+  return c.json(stats);
+});
+
+// 获取所有评论（管理后台）
+app.get("/api/admin/comments", async (c) => {
+  const db = c.get("db");
+  const comments = await db.getAllComments();
+  return c.json(comments);
+});
+
+// 审核评论
+app.post("/api/admin/comments/:id/approve", async (c) => {
+  const id = parseInt(c.req.param("id"));
+  if (isNaN(id)) return c.json({ error: "无效 ID" }, 400);
+  const db = c.get("db");
+  const ok = await db.approveComment(id);
+  if (!ok) return c.json({ error: "评论不存在" }, 404);
+  return c.json({ success: true });
+});
+
+// 删除评论
+app.delete("/api/admin/comments/:id", async (c) => {
+  const id = parseInt(c.req.param("id"));
+  if (isNaN(id)) return c.json({ error: "无效 ID" }, 400);
+  const db = c.get("db");
+  const ok = await db.deleteComment(id);
+  if (!ok) return c.json({ error: "评论不存在" }, 404);
+  return c.json({ success: true });
+});
+
 // 创建文章
 app.post("/api/admin/posts", async (c) => {
   const body = await c.req.json();
@@ -238,6 +399,34 @@ app.post("/api/admin/upload", async (c) => {
   await storage.put(key, file.stream(), { contentType: file.type });
 
   return c.json({ url: `/cdn/${key}`, key });
+});
+
+// 媒体库：列出所有上传的文件
+app.get("/api/admin/media", async (c) => {
+  const storage = c.get("storage");
+  const items = await storage.list("uploads/", 500);
+
+  const media = items.map((obj) => ({
+    key: obj.key,
+    name: obj.key.replace("uploads/", ""),
+    url: `/cdn/${obj.key}`,
+    size: obj.size,
+    uploaded: obj.uploaded,
+  }));
+  media.sort((a, b) => b.uploaded.localeCompare(a.uploaded));
+
+  return c.json(media);
+});
+
+// 媒体库：删除指定文件
+app.delete("/api/admin/media/:key{.+}", async (c) => {
+  const key = c.req.param("key");
+  if (!key.startsWith("uploads/")) {
+    return c.json({ error: "只能删除 uploads/ 下的文件" }, 400);
+  }
+  const storage = c.get("storage");
+  await storage.delete(key);
+  return c.json({ success: true });
 });
 
 // 通过 Worker 代理访问存储文件

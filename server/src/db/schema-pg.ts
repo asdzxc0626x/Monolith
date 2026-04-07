@@ -18,6 +18,9 @@ export const pgPosts = pgTable("posts", {
   listed: boolean("listed").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  viewCount: integer("view_count").notNull().default(0),
+  pinned: boolean("pinned").notNull().default(false),
+  publishAt: timestamp("publish_at", { withTimezone: true }),
 });
 
 /* ── 标签表 ────────────────────────────────── */
@@ -59,4 +62,17 @@ export const pgPages = pgTable("pages", {
 export const pgSettings = pgTable("settings", {
   key: text("key").primaryKey(),
   value: text("value").notNull(),
+});
+
+/* ── 评论表 ──────────────────────────────── */
+export const pgComments = pgTable("comments", {
+  id: serial("id").primaryKey(),
+  postId: integer("post_id")
+    .notNull()
+    .references(() => pgPosts.id, { onDelete: "cascade" }),
+  authorName: text("author_name").notNull(),
+  authorEmail: text("author_email").notNull().default(""),
+  content: text("content").notNull(),
+  approved: boolean("approved").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

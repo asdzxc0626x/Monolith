@@ -12,6 +12,8 @@ import { AdminEditor } from "@/pages/admin/editor";
 import { AdminSettings } from "@/pages/admin/settings";
 import { AdminBackup } from "@/pages/admin/backup";
 import { AdminPages } from "@/pages/admin/pages";
+import { AdminComments } from "@/pages/admin/comments";
+import { AdminMedia } from "@/pages/admin/media";
 import { DynamicPage } from "@/pages/dynamic-page";
 
 export function App() {
@@ -40,6 +42,8 @@ export function App() {
             <Route path="/admin/settings" component={AdminSettings} />
             <Route path="/admin/backup" component={AdminBackup} />
             <Route path="/admin/pages" component={AdminPages} />
+            <Route path="/admin/comments" component={AdminComments} />
+            <Route path="/admin/media" component={AdminMedia} />
             <Route path="/admin" component={AdminDashboard} />
             <Route path="/page/:slug" component={DynamicPage} />
             <Route>
