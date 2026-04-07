@@ -19,7 +19,7 @@
 
 <br/>
 
-[**📚 Wiki 文档**](../../wiki) · [**🐛 提交 Issue**](../../issues) · [**☁️ 在线预览**](https://monolith-client.pages.dev)
+[**📚 Wiki 文档**](https://github.com/one-ea/Monolith/wiki) · [**🐛 提交 Issue**](https://github.com/one-ea/Monolith/issues) · [**☁️ 在线预览**](https://monolith-client.pages.dev)
 
 </div>
 
@@ -66,7 +66,7 @@ Monolith 是一套运行在 **Cloudflare 全球边缘网络**上的现代化无�
                                 └──────────────────────────┘
 ```
 
-> 详细架构说明请参阅 [Wiki · 架构概览](../../wiki/Architecture)
+> 详细架构说明请参阅 [Wiki · 架构概览](https://github.com/one-ea/Monolith/wiki/Architecture)
 
 ---
 
@@ -102,7 +102,7 @@ cd server && npm run dev      # → http://localhost:8787
 cd client && npm run dev      # → http://localhost:5173
 ```
 
-> 📖 完整指南请参阅 [Wiki · 快速开始](../../wiki/Quick-Start)
+> 📖 完整指南请参阅 [Wiki · 快速开始](https://github.com/one-ea/Monolith/wiki/Quick-Start)
 
 ---
 
@@ -123,10 +123,10 @@ npx wrangler deploy
 ```bash
 cd client
 npm run build
-npx wrangler pages deploy dist --project-name monolith-client --branch=master
+npx wrangler pages deploy dist --project-name monolith-client --branch=main
 ```
 
-> 📖 完整部署步骤请参阅 [Wiki · 部署指南](../../wiki/Deployment)
+> 📖 完整部署步骤请参阅 [Wiki · 部署指南](https://github.com/one-ea/Monolith/wiki/Deployment)
 
 ---
 
@@ -157,7 +157,7 @@ Monolith/
 
 | 分支 | 环境 | 说明 |
 |------|------|------|
-| `master` | **生产** `monolith-client.pages.dev` | 保护分支，只接受 PR 合并 |
+| `main` | **生产** `monolith-client.pages.dev` | 保护分支，只接受 PR 合并 |
 | `dev` | 开发预览 | 日常开发在此分支进行 |
 
 ```bash
@@ -165,7 +165,7 @@ Monolith/
 git checkout dev
 # ... 开发 ...
 git push                    # 推送到 dev
-# 在 GitHub 发起 PR: dev → master
+# 在 GitHub 发起 PR: dev → main
 ```
 
 ---
@@ -174,15 +174,15 @@ git push                    # 推送到 dev
 
 | 文档 | 链接 |
 |------|------|
-| 架构概览 | [Wiki · Architecture](../../wiki/Architecture) |
-| 快速开始 | [Wiki · Quick-Start](../../wiki/Quick-Start) |
-| 前端开发指南 | [Wiki · Frontend-Guide](../../wiki/Frontend-Guide) |
-| 后端开发指南 | [Wiki · Backend-Guide](../../wiki/Backend-Guide) |
-| 存储适配器 | [Wiki · Storage-Adapters](../../wiki/Storage-Adapters) |
-| 安全设计 | [Wiki · Security](../../wiki/Security) |
-| API 参考 | [Wiki · API-Reference](../../wiki/API-Reference) |
-| 部署指南 | [Wiki · Deployment](../../wiki/Deployment) |
-| 功能特性 | [Wiki · Features](../../wiki/Features) |
+| 架构概览 | [Wiki · Architecture](https://github.com/one-ea/Monolith/wiki/Architecture) |
+| 快速开始 | [Wiki · Quick-Start](https://github.com/one-ea/Monolith/wiki/Quick-Start) |
+| 前端开发指南 | [Wiki · Frontend-Guide](https://github.com/one-ea/Monolith/wiki/Frontend-Guide) |
+| 后端开发指南 | [Wiki · Backend-Guide](https://github.com/one-ea/Monolith/wiki/Backend-Guide) |
+| 存储适配器 | [Wiki · Storage-Adapters](https://github.com/one-ea/Monolith/wiki/Storage-Adapters) |
+| 安全设计 | [Wiki · Security](https://github.com/one-ea/Monolith/wiki/Security) |
+| API 参考 | [Wiki · API-Reference](https://github.com/one-ea/Monolith/wiki/API-Reference) |
+| 部署指南 | [Wiki · Deployment](https://github.com/one-ea/Monolith/wiki/Deployment) |
+| 功能特性 | [Wiki · Features](https://github.com/one-ea/Monolith/wiki/Features) |
 
 ---
 
