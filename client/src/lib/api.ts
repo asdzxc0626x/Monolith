@@ -1,4 +1,7 @@
-const API_BASE = "";
+/// <reference types="vite/client" />
+// 当本地开发时，VITE_API_URL 未设，默认利用 vite.config.ts 的 proxy (即 "");
+// 线上构建时可通过设置 .env 的 VITE_API_URL 指向真实部署的 worker url 
+const API_BASE = import.meta.env.VITE_API_URL || "";
 
 /* ── 类型 ──────────────────────────────────── */
 export type PostMeta = {

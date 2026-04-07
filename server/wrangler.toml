@@ -11,7 +11,7 @@ BLOG_NAME = "Monolith"
 [[d1_databases]]
 binding = "DB"
 database_name = "monolith-db"
-database_id = "local"  # 部署前需替换为真实 ID
+database_id = "260856eb-760d-4a36-aad7-31f8aa1291e9"
 
 # R2 存储桶绑定
 [[r2_buckets]]
