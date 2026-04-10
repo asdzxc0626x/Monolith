@@ -480,8 +480,8 @@ export function AdminEditor() {
         {/* 左侧 Monaco 编辑器 */}
         <div className="flex flex-col min-h-0">
           {/* 工具栏 */}
-          <div className="flex items-center justify-between px-[8px] py-[4px] border-b border-border/15 bg-card/10 shrink-0">
-            <div className="flex items-center gap-[1px]">
+          <div className="flex items-center justify-between px-[8px] py-[4px] border-b border-border/15 bg-card/10 shrink-0 overflow-x-auto">
+            <div className="flex items-center gap-[1px] shrink-0">
               {toolbarActions.map((item) => {
                 if (!item.icon) return <div key={item.label} className="w-[1px] h-[16px] bg-border/15 mx-[4px]" />;
                 const Icon = item.icon;

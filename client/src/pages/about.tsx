@@ -3,7 +3,7 @@ import { SeoHead } from "@/components/seo-head";
 
 export function AboutPage() {
   return (
-    <div className="mx-auto w-full max-w-[720px] py-[40px] lg:py-[56px]">
+    <div className="mx-auto w-full max-w-[720px] py-[32px] lg:py-[56px] px-[16px] lg:px-0">
       <SeoHead
         title="关于"
         description="关于 Monolith 博客 —— 书写代码、设计与边缘计算的技术空间。"

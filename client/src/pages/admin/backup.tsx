@@ -205,9 +205,9 @@ export function AdminBackup() {
   const inputClass = "h-[34px] w-full rounded-md border border-border/25 bg-background/20 px-[12px] text-[13px] text-foreground placeholder:text-muted-foreground/20 outline-none focus:border-foreground/15 transition-colors";
 
   return (
-    <div className="mx-auto w-full max-w-[720px] py-[32px]">
+    <div className="mx-auto w-full max-w-[720px] py-[24px] sm:py-[32px] px-[16px] sm:px-0">
       {/* 顶栏 */}
-      <div className="mb-[24px] flex items-center justify-between">
+      <div className="mb-[24px] flex flex-col sm:flex-row sm:items-center justify-between gap-[8px]">
         <div className="flex items-center gap-[16px]">
           <Link href="/admin" className="inline-flex items-center gap-[5px] text-[13px] text-muted-foreground/50 hover:text-foreground transition-colors">
             <ArrowLeft className="h-[13px] w-[13px]" />返回
@@ -227,7 +227,7 @@ export function AdminBackup() {
       {/* ─── 快速备份 ─── */}
       <section className="mb-[20px]">
         <SectionTitle icon={Shield} title="快速备份" />
-        <div className="grid grid-cols-3 gap-[8px]">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-[8px]">
           <ActionCard icon={Cloud} color="orange" label="R2 云备份" desc="Cloudflare R2 存储" loading={backing === "r2"} onClick={backupToR2} disabled={!!backing} />
           <ActionCard icon={Globe} color="blue" label="WebDAV" desc="坚果云 / NextCloud" loading={backing === "webdav"} onClick={backupToWebdav} disabled={!!backing} />
           <ActionCard icon={HardDrive} color="emerald" label="本地下载" desc="JSON 文件" loading={backing === "local"} onClick={downloadLocal} disabled={!!backing} />

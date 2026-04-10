@@ -42,7 +42,7 @@ export function PostPage() {
 
   if (loading) {
     return (
-      <div className="mx-auto w-full max-w-[720px] py-[56px]">
+      <div className="mx-auto w-full max-w-[720px] py-[40px] sm:py-[56px] px-[16px] lg:px-0">
         <div className="animate-pulse space-y-[16px]">
           <div className="h-[20px] w-[100px] rounded bg-card/30" />
           <div className="h-[40px] w-3/4 rounded bg-card/30" />
@@ -79,7 +79,7 @@ export function PostPage() {
       {/* 三栏布局容器：文章 + TOC 侧边栏 */}
       <div className="post-layout mx-auto w-full max-w-[1100px] px-[16px] lg:px-[24px]">
         {/* 主内容区 */}
-        <article className="post-content py-[40px] lg:py-[56px]">
+        <article className="post-content py-[32px] lg:py-[56px]">
           <Link href="/" className="mb-[32px] inline-flex items-center gap-[6px] text-[13px] text-muted-foreground/60 transition-all duration-200 hover:text-foreground hover:-translate-x-[2px] animate-fade-in">
             <ArrowLeft className="h-[14px] w-[14px]" />返回首页
           </Link>
@@ -93,7 +93,7 @@ export function PostPage() {
               <span className="text-[12px] text-muted-foreground/50">{formatDate(post.createdAt)}</span>
               <span className="text-[12px] text-muted-foreground/50 inline-flex items-center gap-[3px]"><Eye className="h-[12px] w-[12px]" />{post.viewCount ?? 0}</span>
             </div>
-            <h1 className="text-[28px] font-semibold tracking-[-0.02em] leading-[1.3] lg:text-[32px]">{post.title}</h1>
+            <h1 className="text-[24px] sm:text-[28px] font-semibold tracking-[-0.02em] leading-[1.3] lg:text-[32px]">{post.title}</h1>
             <p className="mt-[16px] text-[15px] leading-[1.8] text-muted-foreground">{post.excerpt}</p>
           </header>
 
