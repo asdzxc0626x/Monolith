@@ -81,79 +81,82 @@ export function AdminDashboard() {
   return (
     <div className="mx-auto w-full max-w-[1020px] py-[24px] sm:py-[40px] px-[16px] sm:px-[20px]">
       {/* ─── 顶栏 ─── */}
-      <div className="mb-[24px] sm:mb-[32px] flex flex-col sm:flex-row sm:items-center justify-between gap-[16px]">
-        <div>
-          <h1 className="text-[24px] sm:text-[32px] font-semibold tracking-[-0.02em]">管理后台</h1>
-          <p className="mt-[4px] sm:mt-[6px] text-[13px] sm:text-[15px] text-muted-foreground/50">管理内容与站点配置</p>
-        </div>
-        <div className="flex items-center gap-[6px] sm:gap-[8px] flex-wrap">
-          <Link href="/admin/editor" className="inline-flex items-center gap-[6px] h-[36px] sm:h-[40px] px-[12px] sm:px-[16px] rounded-lg bg-foreground text-background text-[13px] sm:text-[14px] font-medium hover:opacity-90 transition-opacity">
+      <div className="mb-[24px] sm:mb-[32px]">
+        <div className="flex items-start justify-between mb-[16px]">
+          <div className="min-w-0">
+            <h1 className="text-[22px] sm:text-[32px] font-semibold tracking-[-0.02em] whitespace-nowrap">管理后台</h1>
+            <p className="mt-[2px] sm:mt-[6px] text-[12px] sm:text-[15px] text-muted-foreground/50 whitespace-nowrap">管理内容与站点配置</p>
+          </div>
+          <Link href="/admin/editor" className="inline-flex items-center gap-[5px] h-[34px] sm:h-[40px] px-[12px] sm:px-[16px] rounded-lg bg-foreground text-background text-[13px] sm:text-[14px] font-medium hover:opacity-90 transition-opacity shrink-0 ml-[12px]">
             <Plus className="h-[14px] w-[14px] sm:h-[16px] sm:w-[16px]" />新建
           </Link>
-          <div className="w-[1px] h-[20px] bg-border/40 mx-[2px] hidden sm:block"></div>
-          <Link href="/admin/settings" className="inline-flex items-center justify-center h-[36px] w-[36px] sm:h-[40px] sm:w-[40px] rounded-lg border border-border/40 text-muted-foreground hover:text-foreground hover:border-border/80 hover:bg-card/30 transition-all" title="站点设置">
-            <Settings className="h-[16px] w-[16px] sm:h-[18px] sm:w-[18px]" />
+        </div>
+        <div className="flex items-center gap-[6px] overflow-x-auto pb-[4px] scrollbar-none">
+          <Link href="/admin/settings" className="inline-flex items-center justify-center h-[32px] w-[32px] sm:h-[40px] sm:w-[40px] rounded-lg border border-border/40 text-muted-foreground hover:text-foreground hover:border-border/80 hover:bg-card/30 transition-all shrink-0" title="站点设置">
+            <Settings className="h-[15px] w-[15px] sm:h-[18px] sm:w-[18px]" />
           </Link>
-          <Link href="/admin/backup" className="inline-flex items-center justify-center h-[36px] w-[36px] sm:h-[40px] sm:w-[40px] rounded-lg border border-border/40 text-muted-foreground hover:text-foreground hover:border-border/80 hover:bg-card/30 transition-all" title="备份管理">
-            <HardDrive className="h-[16px] w-[16px] sm:h-[18px] sm:w-[18px]" />
+          <Link href="/admin/backup" className="inline-flex items-center justify-center h-[32px] w-[32px] sm:h-[40px] sm:w-[40px] rounded-lg border border-border/40 text-muted-foreground hover:text-foreground hover:border-border/80 hover:bg-card/30 transition-all shrink-0" title="备份管理">
+            <HardDrive className="h-[15px] w-[15px] sm:h-[18px] sm:w-[18px]" />
           </Link>
-          <Link href="/admin/pages" className="inline-flex items-center justify-center h-[36px] w-[36px] sm:h-[40px] sm:w-[40px] rounded-lg border border-border/40 text-muted-foreground hover:text-foreground hover:border-border/80 hover:bg-card/30 transition-all" title="独立页">
-            <StickyNote className="h-[16px] w-[16px] sm:h-[18px] sm:w-[18px]" />
+          <Link href="/admin/pages" className="inline-flex items-center justify-center h-[32px] w-[32px] sm:h-[40px] sm:w-[40px] rounded-lg border border-border/40 text-muted-foreground hover:text-foreground hover:border-border/80 hover:bg-card/30 transition-all shrink-0" title="独立页">
+            <StickyNote className="h-[15px] w-[15px] sm:h-[18px] sm:w-[18px]" />
           </Link>
-          <Link href="/admin/comments" className="inline-flex items-center justify-center h-[36px] w-[36px] sm:h-[40px] sm:w-[40px] rounded-lg border border-border/40 text-muted-foreground hover:text-foreground hover:border-border/80 hover:bg-card/30 transition-all" title="评论管理">
-            <MessageCircle className="h-[16px] w-[16px] sm:h-[18px] sm:w-[18px]" />
+          <Link href="/admin/comments" className="inline-flex items-center justify-center h-[32px] w-[32px] sm:h-[40px] sm:w-[40px] rounded-lg border border-border/40 text-muted-foreground hover:text-foreground hover:border-border/80 hover:bg-card/30 transition-all shrink-0" title="评论管理">
+            <MessageCircle className="h-[15px] w-[15px] sm:h-[18px] sm:w-[18px]" />
           </Link>
-          <Link href="/admin/media" className="inline-flex items-center justify-center h-[36px] w-[36px] sm:h-[40px] sm:w-[40px] rounded-lg border border-border/40 text-muted-foreground hover:text-foreground hover:border-border/80 hover:bg-card/30 transition-all" title="媒体库">
-            <ImageIcon className="h-[16px] w-[16px] sm:h-[18px] sm:w-[18px]" />
+          <Link href="/admin/media" className="inline-flex items-center justify-center h-[32px] w-[32px] sm:h-[40px] sm:w-[40px] rounded-lg border border-border/40 text-muted-foreground hover:text-foreground hover:border-border/80 hover:bg-card/30 transition-all shrink-0" title="媒体库">
+            <ImageIcon className="h-[15px] w-[15px] sm:h-[18px] sm:w-[18px]" />
           </Link>
-          <button onClick={handleLogout} className="inline-flex items-center justify-center h-[36px] w-[36px] sm:h-[40px] sm:w-[40px] rounded-lg border border-border/40 text-red-400/60 hover:text-red-400 hover:border-red-400/40 hover:bg-red-400/10 transition-all" title="退出登录">
-            <LogOut className="h-[16px] w-[16px] sm:h-[18px] sm:w-[18px]" />
+          <div className="w-[1px] h-[20px] bg-border/30 mx-[2px] shrink-0"></div>
+          <button onClick={handleLogout} className="inline-flex items-center justify-center h-[32px] w-[32px] sm:h-[40px] sm:w-[40px] rounded-lg border border-border/40 text-red-400/60 hover:text-red-400 hover:border-red-400/40 hover:bg-red-400/10 transition-all shrink-0" title="退出登录">
+            <LogOut className="h-[15px] w-[15px] sm:h-[18px] sm:w-[18px]" />
           </button>
         </div>
       </div>
 
+
       {/* ─── 统计卡片 ─── */}
       <div className="mb-[24px] sm:mb-[28px] grid grid-cols-2 md:grid-cols-4 gap-[10px] sm:gap-[16px]">
-        <button onClick={() => { setFilter("all"); setSelectedTag(""); }} className={`rounded-xl border p-[20px] text-left transition-all hover:-translate-y-[2px] shadow-sm ${filter === "all" && !selectedTag ? "border-cyan-500/30 bg-cyan-500/5 shadow-cyan-500/10" : "border-border/30 bg-card/10 hover:bg-card/40 hover:border-border/50"}`}>
+        <button onClick={() => { setFilter("all"); setSelectedTag(""); }} className={`rounded-xl border p-[12px] sm:p-[20px] text-left transition-all hover:-translate-y-[2px] shadow-sm ${filter === "all" && !selectedTag ? "border-cyan-500/30 bg-cyan-500/5 shadow-cyan-500/10" : "border-border/30 bg-card/10 hover:bg-card/40 hover:border-border/50"}`}>
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[12px] sm:text-[13px] text-muted-foreground/60 mb-[6px] sm:mb-[8px] font-medium">全部文章</p>
               <p className="text-[24px] sm:text-[32px] font-bold leading-none tracking-tight">{posts.length}</p>
             </div>
-            <div className={`flex h-[48px] w-[48px] items-center justify-center rounded-2xl ${filter === "all" && !selectedTag ? "bg-cyan-500/20" : "bg-card/50 shadow-inner"}`}>
+            <div className={`flex h-[36px] w-[36px] sm:h-[48px] sm:w-[48px] items-center justify-center rounded-2xl ${filter === "all" && !selectedTag ? "bg-cyan-500/20" : "bg-card/50 shadow-inner"}`}>
               <FileText className={`h-[24px] w-[24px] ${filter === "all" && !selectedTag ? "text-cyan-400" : "text-muted-foreground"}`} />
             </div>
           </div>
         </button>
-        <button onClick={() => { setFilter("published"); setSelectedTag(""); }} className={`rounded-xl border p-[20px] text-left transition-all hover:-translate-y-[2px] shadow-sm ${filter === "published" ? "border-emerald-500/30 bg-emerald-500/5 shadow-emerald-500/10" : "border-border/30 bg-card/10 hover:bg-card/40 hover:border-border/50"}`}>
+        <button onClick={() => { setFilter("published"); setSelectedTag(""); }} className={`rounded-xl border p-[12px] sm:p-[20px] text-left transition-all hover:-translate-y-[2px] shadow-sm ${filter === "published" ? "border-emerald-500/30 bg-emerald-500/5 shadow-emerald-500/10" : "border-border/30 bg-card/10 hover:bg-card/40 hover:border-border/50"}`}>
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[12px] sm:text-[13px] text-muted-foreground/60 mb-[6px] sm:mb-[8px] font-medium">已发布</p>
               <p className="text-[24px] sm:text-[32px] font-bold leading-none tracking-tight">{publishedCount}</p>
             </div>
-            <div className={`flex h-[48px] w-[48px] items-center justify-center rounded-2xl ${filter === "published" ? "bg-emerald-500/20" : "bg-card/50 shadow-inner"}`}>
+            <div className={`flex h-[36px] w-[36px] sm:h-[48px] sm:w-[48px] items-center justify-center rounded-2xl ${filter === "published" ? "bg-emerald-500/20" : "bg-card/50 shadow-inner"}`}>
               <Eye className={`h-[24px] w-[24px] ${filter === "published" ? "text-emerald-400" : "text-emerald-500/50"}`} />
             </div>
           </div>
         </button>
-        <button onClick={() => { setFilter("draft"); setSelectedTag(""); }} className={`rounded-xl border p-[20px] text-left transition-all hover:-translate-y-[2px] shadow-sm ${filter === "draft" ? "border-amber-500/30 bg-amber-500/5 shadow-amber-500/10" : "border-border/30 bg-card/10 hover:bg-card/40 hover:border-border/50"}`}>
+        <button onClick={() => { setFilter("draft"); setSelectedTag(""); }} className={`rounded-xl border p-[12px] sm:p-[20px] text-left transition-all hover:-translate-y-[2px] shadow-sm ${filter === "draft" ? "border-amber-500/30 bg-amber-500/5 shadow-amber-500/10" : "border-border/30 bg-card/10 hover:bg-card/40 hover:border-border/50"}`}>
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[12px] sm:text-[13px] text-muted-foreground/60 mb-[6px] sm:mb-[8px] font-medium">草稿</p>
               <p className="text-[24px] sm:text-[32px] font-bold leading-none tracking-tight">{draftCount}</p>
             </div>
-            <div className={`flex h-[48px] w-[48px] items-center justify-center rounded-2xl ${filter === "draft" ? "bg-amber-500/20" : "bg-card/50 shadow-inner"}`}>
+            <div className={`flex h-[36px] w-[36px] sm:h-[48px] sm:w-[48px] items-center justify-center rounded-2xl ${filter === "draft" ? "bg-amber-500/20" : "bg-card/50 shadow-inner"}`}>
               <Clock className={`h-[24px] w-[24px] ${filter === "draft" ? "text-amber-400" : "text-amber-500/50"}`} />
             </div>
           </div>
         </button>
-        <a href="/" target="_blank" className="rounded-xl border border-border/30 bg-card/10 hover:bg-card/40 hover:border-cyan-500/30 hover:-translate-y-[2px] shadow-sm p-[20px] text-left transition-all group">
+        <a href="/" target="_blank" className="rounded-xl border border-border/30 bg-card/10 hover:bg-card/40 hover:border-cyan-500/30 hover:-translate-y-[2px] shadow-sm p-[12px] sm:p-[20px] text-left transition-all group">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[12px] sm:text-[13px] text-muted-foreground/60 mb-[6px] sm:mb-[8px] font-medium">总浏览量</p>
               <p className="text-[24px] sm:text-[32px] font-bold leading-none tracking-tight">{viewStats?.totalViews?.toLocaleString() ?? "—"}</p>
             </div>
-            <div className="flex h-[48px] w-[48px] items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500/10 to-blue-600/10 shadow-inner group-hover:from-cyan-500/20 group-hover:to-blue-600/20 transition-all">
+            <div className="flex h-[36px] w-[36px] sm:h-[48px] sm:w-[48px] items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500/10 to-blue-600/10 shadow-inner group-hover:from-cyan-500/20 group-hover:to-blue-600/20 transition-all">
               <TrendingUp className="h-[24px] w-[24px] text-cyan-400" />
             </div>
           </div>
