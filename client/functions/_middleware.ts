@@ -57,8 +57,16 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     const assetRes = await context.env.ASSETS.fetch(new Request(indexUrl.toString()));
     let html = await assetRes.text();
 
-    // 更完整的 HTML 标签清理（包括未闭合标签如 <script）
-    const stripHtml = (html: string) => html.replace(/<[^>]*>?/g, "").replace(/\s+/g, " ").trim();
+    // 循环清理 HTML 标签（防止嵌套标签如 <scr<script>ipt> 绕过）
+    const stripHtml = (s: string) => {
+      let result = s;
+      let prev = "";
+      while (prev !== result) {
+        prev = result;
+        result = result.replace(/<[^>]*>?/g, "");
+      }
+      return result.replace(/\s+/g, " ").trim();
+    };
     const description = post.excerpt || (post.content ? stripHtml(post.content).slice(0, 160) : "");
     const siteOrigin = url.origin;
     const articleUrl = `${siteOrigin}/posts/${post.slug}`;
