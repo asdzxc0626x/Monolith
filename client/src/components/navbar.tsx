@@ -106,10 +106,6 @@ export function Navbar() {
                       {link.label}
                     </Link>
                   ))}
-                  <div className="mt-[8px] px-[16px] flex items-center gap-[8px]">
-                    <span className="text-[12px] text-muted-foreground/40">主题</span>
-                    <ThemeToggle />
-                  </div>
                 </nav>
               </SheetContent>
             </Sheet>
