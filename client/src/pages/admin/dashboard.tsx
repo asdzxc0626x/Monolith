@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link, useLocation } from "wouter";
-import { checkAuth, clearToken, fetchAdminPosts, deletePost, fetchViewStats, type Post, type ViewStats } from "@/lib/api";
-import { Plus, Edit, Trash2, LogOut, Eye, FileText, Tag, Clock, Search, Settings, ExternalLink, HardDrive, StickyNote, TrendingUp, BarChart3, MessageCircle, Image as ImageIcon, ArrowRight } from "lucide-react";
+import { checkAuth, clearToken, fetchAdminPosts, deletePost, batchOperatePosts, fetchViewStats, type Post, type ViewStats } from "@/lib/api";
+import { Plus, Edit, Trash2, LogOut, Eye, FileText, Tag, Clock, Search, Settings, ExternalLink, HardDrive, StickyNote, TrendingUp, BarChart3, MessageCircle, Image as ImageIcon, ArrowRight, Globe, CheckCircle2, AlertTriangle, XCircle, CheckSquare, Square, EyeOff } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 function timeAgo(d: string): string {
@@ -43,19 +43,14 @@ export function AdminDashboard() {
     try {
       await deletePost(slug);
       setPosts((prev) => prev.filter((p) => p.slug !== slug));
+      setSelectedSlugs((prev) => { const next = new Set(prev); next.delete(slug); return next; });
     } finally {
       setDeleting(null);
     }
   };
 
-  const handleLogout = () => { clearToken(); setLocation("/admin/login"); };
-
-  const publishedCount = posts.filter((p) => p.published).length;
-  const draftCount = posts.filter((p) => !p.published).length;
-  const allTags = useMemo(() => {
-    const tagSet = new Set(posts.flatMap((p) => p.tags));
-    return Array.from(tagSet).sort();
-  }, [posts]);
+  const [selectedSlugs, setSelectedSlugs] = useState<Set<string>>(new Set());
+  const [batchOperating, setBatchOperating] = useState(false);
 
   const filteredPosts = useMemo(() => {
     let result = posts;
@@ -73,13 +68,65 @@ export function AdminDashboard() {
     return result;
   }, [posts, filter, selectedTag, search]);
 
+  useEffect(() => {
+    setSelectedSlugs(prev => {
+      if (prev.size === 0) return prev;
+      const valid = new Set([...prev].filter(s => filteredPosts.some(p => p.slug === s)));
+      return valid.size === prev.size ? prev : valid;
+    });
+  }, [filteredPosts]);
+
+  const toggleSelectAll = () => {
+    if (selectedSlugs.size === filteredPosts.length && filteredPosts.length > 0) setSelectedSlugs(new Set());
+    else setSelectedSlugs(new Set(filteredPosts.map((p) => p.slug)));
+  };
+
+  const toggleSelect = (slug: string) => {
+    const next = new Set(selectedSlugs);
+    if (next.has(slug)) next.delete(slug);
+    else next.add(slug);
+    setSelectedSlugs(next);
+  };
+
+  const handleBatchOperate = async (action: "publish" | "unpublish" | "delete") => {
+    if (selectedSlugs.size === 0) return;
+    const actionName = action === "publish" ? "发布" : action === "unpublish" ? "撤回发布" : "删除";
+    if (!confirm(`确定要批量${actionName}选中的 ${selectedSlugs.size} 篇文章吗？${action === "delete" ? "此操作不可恢复！" : ""}`)) return;
+    
+    setBatchOperating(true);
+    try {
+      const slugs = Array.from(selectedSlugs);
+      await batchOperatePosts(slugs, action);
+      if (action === "delete") {
+        setPosts((prev) => prev.filter((p) => !slugs.includes(p.slug)));
+      } else {
+        setPosts((prev) => prev.map((p) => slugs.includes(p.slug) ? { ...p, published: action === "publish" } : p));
+      }
+      setSelectedSlugs(new Set());
+    } catch (err: any) {
+      alert(err.message || "批量操作失败");
+    } finally {
+      setBatchOperating(false);
+    }
+  };
+
+  const handleLogout = () => { clearToken(); setLocation("/admin/login"); };
+
+  const publishedCount = posts.filter((p) => p.published).length;
+  const draftCount = posts.filter((p) => !p.published).length;
+  const allTags = useMemo(() => {
+    const tagSet = new Set(posts.flatMap((p) => p.tags));
+    return Array.from(tagSet).sort();
+  }, [posts]);
+
   // 导航项配置
   const navItems = [
     { href: "/admin/settings",  icon: Settings,       label: "设置",   color: "text-blue-400",    bg: "bg-blue-500/10" },
     { href: "/admin/pages",     icon: StickyNote,     label: "页面",   color: "text-violet-400",  bg: "bg-violet-500/10" },
     { href: "/admin/comments",  icon: MessageCircle,  label: "评论",   color: "text-emerald-400", bg: "bg-emerald-500/10" },
-    { href: "/admin/media",     icon: ImageIcon,      label: "媒体",   color: "text-amber-400",   bg: "bg-amber-500/10" },
-    { href: "/admin/backup",    icon: HardDrive,      label: "备份",   color: "text-rose-400",    bg: "bg-rose-500/10" },
+    { href: "/admin/media",      icon: ImageIcon,      label: "媒体",   color: "text-amber-400",   bg: "bg-amber-500/10" },
+    { href: "/admin/analytics",  icon: BarChart3,      label: "分析",   color: "text-cyan-400",    bg: "bg-cyan-500/10" },
+    { href: "/admin/backup",     icon: HardDrive,      label: "备份",   color: "text-rose-400",    bg: "bg-rose-500/10" },
   ];
 
   return (
@@ -166,6 +213,32 @@ export function AdminDashboard() {
             <span className="text-[11px] text-muted-foreground/25">{filteredPosts.length} 篇</span>
           </div>
 
+          {/* 批量操作工具栏 */}
+          {filteredPosts.length > 0 && (
+            <div className={`mb-[10px] flex items-center justify-between rounded-lg border border-border/15 bg-card/10 px-[14px] py-[8px] transition-all ${selectedSlugs.size > 0 ? "border-cyan-500/30 bg-cyan-500/5" : ""}`}>
+              <div className="flex items-center gap-[10px]">
+                <button onClick={toggleSelectAll} className="text-muted-foreground/40 hover:text-cyan-400 transition-colors flex items-center gap-[6px]">
+                  {selectedSlugs.size === filteredPosts.length ? <CheckSquare className="h-[14px] w-[14px] text-cyan-400" /> : <Square className="h-[14px] w-[14px]" />}
+                  <span className="text-[12px]">{selectedSlugs.size > 0 ? `已选 ${selectedSlugs.size} 项` : "全选"}</span>
+                </button>
+              </div>
+              
+              {selectedSlugs.size > 0 && (
+                <div className="flex items-center gap-[6px] animate-fade-in">
+                  <button onClick={() => handleBatchOperate("publish")} disabled={batchOperating} className="flex items-center gap-[4px] px-[10px] py-[4px] rounded-md border border-border/20 text-[11px] text-emerald-400 hover:bg-emerald-400/10 transition-colors disabled:opacity-50">
+                    <Eye className="h-[11px] w-[11px]" /> 发布
+                  </button>
+                  <button onClick={() => handleBatchOperate("unpublish")} disabled={batchOperating} className="flex items-center gap-[4px] px-[10px] py-[4px] rounded-md border border-border/20 text-[11px] text-amber-400 hover:bg-amber-400/10 transition-colors disabled:opacity-50">
+                    <EyeOff className="h-[11px] w-[11px]" /> 撤回
+                  </button>
+                  <button onClick={() => handleBatchOperate("delete")} disabled={batchOperating} className="flex items-center gap-[4px] px-[10px] py-[4px] rounded-md border border-red-500/30 text-[11px] text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-50">
+                    <Trash2 className="h-[11px] w-[11px]" /> 删除
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           {loading ? (
             <div className="space-y-[6px]">{[1, 2, 3].map((i) => <div key={i} className="h-[72px] animate-pulse rounded-lg border border-border/10 bg-card/5" />)}</div>
           ) : filteredPosts.length === 0 ? (
@@ -183,7 +256,13 @@ export function AdminDashboard() {
           ) : (
             <div className="space-y-[4px]">
               {filteredPosts.map((post) => (
-                <div key={post.slug} className="group relative flex items-center gap-[12px] rounded-lg border border-border/12 bg-card/5 px-[14px] py-[12px] hover:border-border/35 hover:bg-card/20 transition-all">
+                <div key={post.slug} className={`group relative flex items-center gap-[12px] rounded-lg border px-[14px] py-[12px] transition-all ${selectedSlugs.has(post.slug) ? "border-cyan-500/30 bg-cyan-500/5 text-cyan-400" : "border-border/12 bg-card/5 hover:border-border/35 hover:bg-card/20"}`}>
+                  
+                  {/* 复选框 */}
+                  <button onClick={() => toggleSelect(post.slug)} className={`shrink-0 transition-colors ${selectedSlugs.has(post.slug) ? "text-cyan-400" : "text-muted-foreground/20 group-hover:text-muted-foreground/40"}`}>
+                    {selectedSlugs.has(post.slug) ? <CheckSquare className="h-[14px] w-[14px]" /> : <Square className="h-[14px] w-[14px]" />}
+                  </button>
+
                   {/* 状态指示点 */}
                   <div className={`h-[6px] w-[6px] rounded-full shrink-0 ${post.published ? "bg-emerald-400/60" : "bg-amber-400/50"}`} />
 
@@ -217,8 +296,72 @@ export function AdminDashboard() {
           )}
         </div>
 
-        {/* ─── 右侧边栏：标签 + 热门 ─── */}
+        {/* ─── 右侧边栏：标签 + 热门 + SEO ─── */}
         <div className="space-y-[14px]">
+
+          {/* SEO 健康状态 */}
+          {posts.length > 0 && (() => {
+            const published = posts.filter(p => p.published);
+            const withExcerpt = published.filter(p => p.excerpt && p.excerpt.trim().length > 0);
+            const withTags = published.filter(p => p.tags.length > 0);
+            const goodSlug = published.filter(p => /^[a-z0-9-]+$/.test(p.slug) && !p.slug.includes("--") && !p.slug.startsWith("-") && !p.slug.endsWith("-"));
+            const withTitle50 = published.filter(p => p.title.length <= 60 && p.title.length >= 5);
+
+            const checks = [
+              { label: "Meta 摘要", ok: withExcerpt.length, total: published.length, desc: "已填写 excerpt" },
+              { label: "标签覆盖", ok: withTags.length, total: published.length, desc: "至少 1 个标签" },
+              { label: "URL 规范", ok: goodSlug.length, total: published.length, desc: "slug 为小写+连字符" },
+              { label: "标题长度", ok: withTitle50.length, total: published.length, desc: "5-60 字符" },
+            ];
+
+            const totalOk = checks.reduce((s, c) => s + c.ok, 0);
+            const totalAll = checks.reduce((s, c) => s + c.total, 0);
+            const score = totalAll > 0 ? Math.round((totalOk / totalAll) * 100) : 0;
+
+            const scoreColor = score >= 90 ? "text-emerald-400" : score >= 70 ? "text-amber-400" : "text-red-400";
+            const scoreBg = score >= 90 ? "bg-emerald-500/8" : score >= 70 ? "bg-amber-500/8" : "bg-red-500/8";
+            const scoreBorder = score >= 90 ? "border-emerald-500/20" : score >= 70 ? "border-amber-500/20" : "border-red-500/20";
+
+            return (
+              <div className={`rounded-xl border ${scoreBorder} ${scoreBg} p-[14px]`}>
+                <div className="flex items-center justify-between mb-[10px]">
+                  <h3 className="text-[10px] font-medium text-muted-foreground/40 uppercase tracking-wider flex items-center gap-[4px]">
+                    <Globe className="h-[10px] w-[10px] text-cyan-400/50" />SEO 健康
+                  </h3>
+                  <span className={`text-[18px] font-bold ${scoreColor}`}>{score}%</span>
+                </div>
+                <div className="space-y-[6px]">
+                  {checks.map(c => {
+                    const pct = c.total > 0 ? Math.round((c.ok / c.total) * 100) : 0;
+                    const Icon = pct === 100 ? CheckCircle2 : pct >= 70 ? AlertTriangle : XCircle;
+                    const color = pct === 100 ? "text-emerald-400/70" : pct >= 70 ? "text-amber-400/70" : "text-red-400/60";
+                    return (
+                      <div key={c.label} className="flex items-center gap-[6px]">
+                        <Icon className={`h-[11px] w-[11px] shrink-0 ${color}`} />
+                        <span className="flex-1 text-[11px] text-foreground/50">{c.label}</span>
+                        <span className="text-[10px] text-muted-foreground/30">{c.ok}/{c.total}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* sitemap + robots 固定指标 */}
+                <div className="mt-[8px] pt-[8px] border-t border-border/10 space-y-[4px]">
+                  {[
+                    { label: "Sitemap", ok: true },
+                    { label: "Robots noindex (404)", ok: true },
+                    { label: "JSON-LD 结构化", ok: true },
+                    { label: "OG 社交标签", ok: true },
+                  ].map(item => (
+                    <div key={item.label} className="flex items-center gap-[6px]">
+                      <CheckCircle2 className="h-[11px] w-[11px] shrink-0 text-emerald-400/50" />
+                      <span className="text-[11px] text-foreground/40">{item.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
           {/* 标签 */}
           {allTags.length > 0 && (
             <div>

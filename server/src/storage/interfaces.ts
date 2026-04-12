@@ -20,6 +20,9 @@ export type Post = {
   viewCount: number;
   pinned: boolean;
   publishAt: string | null;
+  seriesSlug: string | null;
+  seriesOrder: number;
+  category: string;
 };
 
 export type PostSummary = {
@@ -32,6 +35,8 @@ export type PostSummary = {
   tags: string[];
   pinned: boolean;
   publishAt: string | null;
+  seriesSlug: string | null;
+  category: string;
 };
 
 export type Tag = {
@@ -69,6 +74,9 @@ export type CreatePostInput = {
   tags?: string[];
   pinned?: boolean;
   publishAt?: string | null;
+  seriesSlug?: string | null;
+  seriesOrder?: number;
+  category?: string;
 };
 
 export type UpdatePostInput = {
@@ -82,6 +90,9 @@ export type UpdatePostInput = {
   tags?: string[];
   pinned?: boolean;
   publishAt?: string | null;
+  seriesSlug?: string | null;
+  seriesOrder?: number;
+  category?: string;
 };
 
 export type UpsertPageInput = {
@@ -134,6 +145,15 @@ export type CreateCommentInput = {
   content: string;
 };
 
+export type PostVersion = {
+  id: number;
+  postId: number;
+  title: string;
+  content: string;
+  excerpt: string | null;
+  createdAt: string;
+};
+
 /* ── 数据库抽象接口 ───────────────────────── */
 
 export interface IDatabase {
@@ -144,6 +164,13 @@ export interface IDatabase {
   createPost(data: CreatePostInput): Promise<Post>;
   updatePost(slug: string, data: UpdatePostInput): Promise<Post | null>;
   deletePost(slug: string): Promise<boolean>;
+  publishScheduledPosts(): Promise<number>;
+  batchOperatePosts(slugs: string[], action: "publish" | "unpublish" | "delete"): Promise<number>;
+  
+  /* 文章版本历史 */
+  getPostVersions(slug: string): Promise<PostVersion[]>;
+  createPostVersion(slug: string): Promise<boolean>;
+  restorePostVersion(slug: string, versionId: number): Promise<Post | null>;
 
   /* 标签 */
   getAllTags(): Promise<Tag[]>;
@@ -192,6 +219,26 @@ export interface IDatabase {
   approveComment(id: number): Promise<boolean>;
   deleteComment(id: number): Promise<boolean>;
   getCommentCount(postSlug: string): Promise<number>;
+
+  /* 系列 */
+  getSeriesPosts(seriesSlug: string): Promise<{ slug: string; title: string; seriesOrder: number }[]>;
+
+  /* 分类 */
+  getCategories(): Promise<{ name: string; count: number }[]>;
+
+  /* 表情反应 */
+  getReactions(postSlug: string): Promise<Record<string, number>>;
+  toggleReaction(postSlug: string, type: string, ipHash: string): Promise<{ action: "added" | "removed" }>;
+
+  /* 访客分析 */
+  recordVisit(data: { path: string; country: string; refererDomain: string; deviceType: string }): Promise<void>;
+  getAnalytics(days: number): Promise<{
+    visitsByDay: { date: string; count: number }[];
+    topCountries: { country: string; count: number }[];
+    topReferers: { referer: string; count: number }[];
+    deviceBreakdown: { device: string; count: number }[];
+    topPages: { path: string; count: number }[];
+  }>;
 }
 
 /* ── 对象存储抽象接口 ─────────────────────── */

@@ -14,6 +14,8 @@ export type PostMeta = {
   tags: string[];
   pinned: boolean;
   publishAt: string | null;
+  seriesSlug: string | null;
+  category: string;
 };
 
 export type Post = PostMeta & {
@@ -22,6 +24,7 @@ export type Post = PostMeta & {
   listed: boolean;
   updatedAt: string;
   viewCount: number;
+  seriesOrder: number;
 };
 
 /* ── 公开 API ──────────────────────────────── */
@@ -40,6 +43,37 @@ export async function fetchPost(slug: string): Promise<Post> {
 export async function fetchTags(): Promise<{ id: number; name: string }[]> {
   const res = await fetch(`${API_BASE}/api/tags`);
   if (!res.ok) throw new Error("获取标签失败");
+  return res.json();
+}
+
+export type CategoryInfo = { name: string; count: number };
+
+export async function fetchCategories(): Promise<CategoryInfo[]> {
+  const res = await fetch(`${API_BASE}/api/categories`);
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export type SeriesPost = { slug: string; title: string; seriesOrder: number };
+
+export async function fetchSeriesPosts(seriesSlug: string): Promise<SeriesPost[]> {
+  const res = await fetch(`${API_BASE}/api/series/${seriesSlug}`);
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export async function fetchReactions(slug: string): Promise<Record<string, number>> {
+  const res = await fetch(`${API_BASE}/api/posts/${slug}/reactions`);
+  if (!res.ok) return {};
+  return res.json();
+}
+
+export async function toggleReaction(slug: string, type: string): Promise<{ action: string; reactions: Record<string, number> }> {
+  const res = await fetch(`${API_BASE}/api/posts/${slug}/reactions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ type }),
+  });
   return res.json();
 }
 
@@ -116,7 +150,7 @@ export async function createPost(data: {
 
 export async function updatePost(
   slug: string,
-  data: Partial<Post & { tags: string[] }>
+  data: Partial<Post & { tags: string[]; saveVersion?: boolean }>
 ): Promise<Post> {
   const res = await fetch(`${API_BASE}/api/admin/posts/${slug}`, {
     method: "PUT",
@@ -132,7 +166,46 @@ export async function deletePost(slug: string): Promise<void> {
     method: "DELETE",
     headers: authHeaders(),
   });
-  if (!res.ok) throw new Error("删除文章失败");
+  if (!res.ok) throw new Error("删除失败");
+}
+
+export async function batchOperatePosts(slugs: string[], action: "publish" | "unpublish" | "delete"): Promise<{ count: number }> {
+  const res = await fetch(`${API_BASE}/api/admin/posts/batch`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ slugs, action }),
+  });
+  if (!res.ok) throw new Error("批量操作失败");
+  return res.json();
+}
+
+export type PostVersion = {
+  id: number;
+  postId: number;
+  title: string;
+  content: string;
+  excerpt: string | null;
+  createdAt: string;
+};
+
+export async function fetchPostVersions(slug: string): Promise<PostVersion[]> {
+  const res = await fetch(`${API_BASE}/api/admin/posts/${slug}/versions`, {
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error("获取版本失败");
+  return res.json();
+}
+
+export async function restorePostVersion(slug: string, versionId: number): Promise<{ success: boolean; post: Post }> {
+  const res = await fetch(`${API_BASE}/api/admin/posts/${slug}/versions/${versionId}/restore`, { 
+    method: "POST",
+    headers: authHeaders(),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => null);
+    throw new Error(data?.error || "恢复版本失败");
+  }
+  return res.json();
 }
 
 export async function uploadImage(file: File): Promise<{ url: string }> {
@@ -158,6 +231,22 @@ export async function fetchViewStats(): Promise<ViewStats> {
     headers: authHeaders(),
   });
   if (!res.ok) throw new Error("获取统计数据失败");
+  return res.json();
+}
+
+export type AnalyticsData = {
+  visitsByDay: { date: string; count: number }[];
+  topCountries: { country: string; count: number }[];
+  topReferers: { referer: string; count: number }[];
+  deviceBreakdown: { device: string; count: number }[];
+  topPages: { path: string; count: number }[];
+};
+
+export async function fetchAnalytics(days = 7): Promise<AnalyticsData> {
+  const res = await fetch(`${API_BASE}/api/admin/analytics?days=${days}`, {
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error("获取分析数据失败");
   return res.json();
 }
 

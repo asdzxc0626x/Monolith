@@ -18,3 +18,7 @@ migrations_dir = "src/migrations"
 [[r2_buckets]]
 binding = "BUCKET"
 bucket_name = "monolith-assets"
+
+# 定时触发器 (每 1 分钟执行一次)
+[triggers]
+crons = ["* * * * *"]

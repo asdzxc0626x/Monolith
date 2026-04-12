@@ -6,12 +6,12 @@
 
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { eq, desc, sql } from "drizzle-orm";
-import { pgPosts, pgTags, pgPostTags, pgPages, pgSettings, pgComments } from "../../db/schema-pg";
+import { eq, desc, sql, inArray } from "drizzle-orm";
+import { pgPosts, pgTags, pgPostTags, pgPages, pgSettings, pgComments, pgReactions, pgVisits, pgPostVersions } from "../../db/schema-pg";
 import type {
   IDatabase, Post, PostSummary, Tag, Page, PageSummary,
   CreatePostInput, UpdatePostInput, UpsertPageInput,
-  BackupData, ImportResult, ViewStats, Comment, CreateCommentInput,
+  BackupData, ImportResult, ViewStats, Comment, CreateCommentInput, PostVersion
 } from "../interfaces";
 
 type DrizzlePG = ReturnType<typeof drizzle>;
@@ -59,6 +59,15 @@ export class PostgresAdapter implements IDatabase {
       ALTER TABLE posts ADD COLUMN IF NOT EXISTS publish_at TIMESTAMPTZ
     `.catch(() => {});
     await this.client`
+      ALTER TABLE posts ADD COLUMN IF NOT EXISTS series_slug TEXT
+    `.catch(() => {});
+    await this.client`
+      ALTER TABLE posts ADD COLUMN IF NOT EXISTS category TEXT DEFAULT ''
+    `.catch(() => {});
+    await this.client`
+      ALTER TABLE posts ADD COLUMN IF NOT EXISTS series_order INTEGER DEFAULT 0
+    `.catch(() => {});
+    await this.client`
       CREATE TABLE IF NOT EXISTS tags (
         id SERIAL PRIMARY KEY,
         name TEXT NOT NULL UNIQUE
@@ -98,6 +107,36 @@ export class PostgresAdapter implements IDatabase {
         author_email TEXT NOT NULL DEFAULT '',
         content TEXT NOT NULL,
         approved BOOLEAN NOT NULL DEFAULT false,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `;
+    await this.client`
+      CREATE TABLE IF NOT EXISTS post_versions (
+        id SERIAL PRIMARY KEY,
+        post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL,
+        excerpt TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `;
+    await this.client`
+      CREATE TABLE IF NOT EXISTS reactions (
+        id SERIAL PRIMARY KEY,
+        post_slug TEXT NOT NULL REFERENCES posts(slug) ON DELETE CASCADE,
+        type TEXT NOT NULL,
+        ip_hash TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE(post_slug, type, ip_hash)
+      )
+    `;
+    await this.client`
+      CREATE TABLE IF NOT EXISTS visits (
+        id SERIAL PRIMARY KEY,
+        path TEXT NOT NULL,
+        country TEXT NOT NULL DEFAULT 'XX',
+        referer_domain TEXT NOT NULL DEFAULT '',
+        device_type TEXT NOT NULL DEFAULT 'desktop',
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `;
@@ -151,6 +190,8 @@ export class PostgresAdapter implements IDatabase {
         createdAt: pgPosts.createdAt,
         pinned: pgPosts.pinned,
         publishAt: pgPosts.publishAt,
+        seriesSlug: pgPosts.seriesSlug,
+        category: pgPosts.category,
       })
       .from(pgPosts)
       .where(
@@ -169,6 +210,8 @@ export class PostgresAdapter implements IDatabase {
         tags: await this.getPostTags(post.id),
         pinned: post.pinned,
         publishAt: this.ts(post.publishAt),
+        seriesSlug: post.seriesSlug || null,
+        category: post.category || "",
       }))
     );
   }
@@ -194,6 +237,9 @@ export class PostgresAdapter implements IDatabase {
         viewCount: post.viewCount ?? 0,
         pinned: post.pinned,
         publishAt: this.ts(post.publishAt),
+        seriesSlug: post.seriesSlug || null,
+        category: post.category || "",
+        seriesOrder: post.seriesOrder ?? 0,
         tags: await this.getPostTags(post.id),
       }))
     );
@@ -222,6 +268,9 @@ export class PostgresAdapter implements IDatabase {
       viewCount: post.viewCount ?? 0,
       pinned: post.pinned,
       publishAt: this.ts(post.publishAt),
+      seriesSlug: post.seriesSlug || null,
+      category: post.category || "",
+      seriesOrder: post.seriesOrder ?? 0,
       tags: await this.getPostTags(post.id),
     };
   }
@@ -239,6 +288,9 @@ export class PostgresAdapter implements IDatabase {
         listed: data.listed ?? true,
         pinned: data.pinned ?? false,
         publishAt: data.publishAt ? sql`${data.publishAt}::timestamptz` : null,
+        seriesSlug: data.seriesSlug || null,
+        category: data.category || "",
+        seriesOrder: data.seriesOrder ?? 0,
       })
       .returning();
 
@@ -260,6 +312,9 @@ export class PostgresAdapter implements IDatabase {
       viewCount: 0,
       pinned: newPost.pinned,
       publishAt: this.ts(newPost.publishAt),
+      seriesSlug: newPost.seriesSlug || null,
+      category: newPost.category || "",
+      seriesOrder: newPost.seriesOrder ?? 0,
     };
   }
 
@@ -284,6 +339,9 @@ export class PostgresAdapter implements IDatabase {
         ...(data.listed !== undefined && { listed: data.listed }),
         ...(data.pinned !== undefined && { pinned: data.pinned }),
         ...(data.publishAt !== undefined && { publishAt: data.publishAt ? sql`${data.publishAt}::timestamptz` : null }),
+        ...(data.seriesSlug !== undefined && { seriesSlug: data.seriesSlug }),
+        ...(data.category !== undefined && { category: data.category }),
+        ...(data.seriesOrder !== undefined && { seriesOrder: data.seriesOrder }),
         updatedAt: sql`NOW()`,
       })
       .where(eq(pgPosts.id, existing.id))
@@ -307,12 +365,85 @@ export class PostgresAdapter implements IDatabase {
       viewCount: updated.viewCount ?? 0,
       pinned: updated.pinned,
       publishAt: this.ts(updated.publishAt),
+      seriesSlug: updated.seriesSlug || null,
+      category: updated.category || "",
+      seriesOrder: updated.seriesOrder ?? 0,
     };
   }
 
   async deletePost(slug: string): Promise<boolean> {
     const result = await this.db.delete(pgPosts).where(eq(pgPosts.slug, slug)).returning();
     return result.length > 0;
+  }
+
+  async batchOperatePosts(slugs: string[], action: "publish" | "unpublish" | "delete"): Promise<number> {
+    if (!slugs || slugs.length === 0) return 0;
+    if (action === "delete") {
+      const result = await this.db.delete(pgPosts).where(inArray(pgPosts.slug, slugs)).returning();
+      return result.length;
+    } else {
+      const published = action === "publish";
+      const result = await this.db.update(pgPosts)
+        .set({ published, updatedAt: new Date() })
+        .where(inArray(pgPosts.slug, slugs))
+        .returning();
+      return result.length;
+    }
+  }
+
+  async publishScheduledPosts(): Promise<number> {
+    const result = await this.db
+      .update(pgPosts)
+      .set({ published: true })
+      .where(
+        sql`${pgPosts.published} = false AND ${pgPosts.publishAt} IS NOT NULL AND ${pgPosts.publishAt} <= NOW()`
+      )
+      .returning();
+    return result.length;
+  }
+
+  /* ── 历史版本 ─────────────────────── */
+
+  async getPostVersions(slug: string): Promise<PostVersion[]> {
+    const post = await this.db.select({ id: pgPosts.id }).from(pgPosts).where(eq(pgPosts.slug, slug));
+    if (!post || post.length === 0) return [];
+    
+    const versions = await this.db.select().from(pgPostVersions).where(eq(pgPostVersions.postId, post[0].id)).orderBy(desc(pgPostVersions.createdAt));
+    return versions.map(v => ({
+      ...v,
+      id: v.id,
+      postId: v.postId,
+      createdAt: v.createdAt.toISOString()
+    }));
+  }
+
+  async createPostVersion(slug: string): Promise<boolean> {
+    const post = await this.db.select().from(pgPosts).where(eq(pgPosts.slug, slug));
+    if (!post || post.length === 0) return false;
+    await this.db.insert(pgPostVersions).values({
+      postId: post[0].id,
+      title: post[0].title,
+      content: post[0].content,
+      excerpt: post[0].excerpt,
+    });
+    return true;
+  }
+
+  async restorePostVersion(slug: string, versionId: number): Promise<Post | null> {
+    const post = await this.db.select({ id: pgPosts.id }).from(pgPosts).where(eq(pgPosts.slug, slug));
+    if (!post || post.length === 0) return null;
+    const version = await this.db.select().from(pgPostVersions).where(eq(pgPostVersions.id, versionId));
+    if (!version || version.length === 0 || version[0].postId !== post[0].id) return null;
+
+    // 更新当前文章
+    await this.db.update(pgPosts).set({
+      title: version[0].title,
+      content: version[0].content,
+      excerpt: version[0].excerpt,
+      updatedAt: new Date(),
+    }).where(eq(pgPosts.id, post[0].id));
+
+    return this.getPostBySlug(slug) as Promise<Post | null>;
   }
 
   /* ── 标签 ─────────────────────── */
@@ -508,6 +639,9 @@ export class PostgresAdapter implements IDatabase {
         viewCount: p.viewCount ?? 0,
         pinned: p.pinned,
         publishAt: this.ts(p.publishAt),
+        seriesSlug: p.seriesSlug || null,
+        category: p.category || "",
+        seriesOrder: p.seriesOrder ?? 0,
       })),
       tags: allTags,
       postTags: allPostTags,
@@ -598,6 +732,8 @@ export class PostgresAdapter implements IDatabase {
         createdAt: pgPosts.createdAt,
         pinned: pgPosts.pinned,
         publishAt: pgPosts.publishAt,
+        seriesSlug: pgPosts.seriesSlug,
+        category: pgPosts.category,
       })
       .from(pgPosts)
       .where(
@@ -617,6 +753,8 @@ export class PostgresAdapter implements IDatabase {
         tags: await this.getPostTags(post.id),
         pinned: post.pinned,
         publishAt: this.ts(post.publishAt),
+        seriesSlug: post.seriesSlug || null,
+        category: post.category || "",
       }))
     );
   }
@@ -780,5 +918,98 @@ export class PostgresAdapter implements IDatabase {
       WHERE p.slug = ${postSlug} AND c.approved = true
     `;
     return row?.count ?? 0;
+  }
+
+  async getSeriesPosts(seriesSlug: string): Promise<{ slug: string; title: string; seriesOrder: number }[]> {
+    const rows = await this.client`
+      SELECT slug, title, series_order FROM posts
+      WHERE series_slug = ${seriesSlug} AND published = true AND (publish_at IS NULL OR publish_at <= NOW())
+      ORDER BY series_order ASC
+    `;
+    return rows.map(r => ({ slug: r.slug as string, title: r.title as string, seriesOrder: (r.series_order as number) ?? 0 }));
+  }
+
+  async getCategories(): Promise<{ name: string; count: number }[]> {
+    const rows = await this.client`
+      SELECT category as name, COUNT(*)::int as count FROM posts
+      WHERE published = true AND (publish_at IS NULL OR publish_at <= NOW()) AND category != '' AND category IS NOT NULL
+      GROUP BY category ORDER BY count DESC
+    `;
+    return rows.map(r => ({ name: r.name as string, count: r.count as number }));
+  }
+
+  async getReactions(postSlug: string): Promise<Record<string, number>> {
+    await this.ensureCoreTables();
+    const rows = await this.client`
+      SELECT type, COUNT(*)::int as count FROM reactions
+      WHERE post_slug = ${postSlug}
+      GROUP BY type
+    `;
+    const result: Record<string, number> = {};
+    for (const row of rows) {
+      result[row.type as string] = row.count as number;
+    }
+    return result;
+  }
+
+  async toggleReaction(postSlug: string, type: string, ipHash: string): Promise<{ action: "added" | "removed" }> {
+    // 确保表存在
+    await this.client`
+      CREATE TABLE IF NOT EXISTS reactions (
+        id SERIAL PRIMARY KEY,
+        post_slug TEXT NOT NULL,
+        type TEXT NOT NULL,
+        ip_hash TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE(post_slug, type, ip_hash)
+      )
+    `;
+    const [existing] = await this.client`
+      SELECT id FROM reactions
+      WHERE post_slug = ${postSlug} AND type = ${type} AND ip_hash = ${ipHash}
+      LIMIT 1
+    `;
+    if (existing) {
+      await this.client`DELETE FROM reactions WHERE id = ${existing.id}`;
+      return { action: "removed" };
+    }
+    await this.client`INSERT INTO reactions (post_slug, type, ip_hash) VALUES (${postSlug}, ${type}, ${ipHash})`;
+    return { action: "added" };
+  }
+
+  async recordVisit(data: { path: string; country: string; refererDomain: string; deviceType: string }): Promise<void> {
+    await this.client`
+      CREATE TABLE IF NOT EXISTS visits (
+        id SERIAL PRIMARY KEY, path TEXT NOT NULL,
+        country TEXT NOT NULL DEFAULT 'XX', referer_domain TEXT NOT NULL DEFAULT '',
+        device_type TEXT NOT NULL DEFAULT 'desktop',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `;
+    await this.client`INSERT INTO visits (path, country, referer_domain, device_type) VALUES (${data.path}, ${data.country}, ${data.refererDomain}, ${data.deviceType})`;
+  }
+
+  async getAnalytics(days: number) {
+    await this.ensureCoreTables();
+    await this.client`
+      CREATE TABLE IF NOT EXISTS visits (
+        id SERIAL PRIMARY KEY, path TEXT NOT NULL,
+        country TEXT NOT NULL DEFAULT 'XX', referer_domain TEXT NOT NULL DEFAULT '',
+        device_type TEXT NOT NULL DEFAULT 'desktop',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `;
+    const byDay = await this.client`SELECT DATE(created_at) as date, COUNT(*)::int as count FROM visits WHERE created_at >= NOW() - INTERVAL '1 day' * ${days} GROUP BY DATE(created_at) ORDER BY date`;
+    const byCountry = await this.client`SELECT country, COUNT(*)::int as count FROM visits WHERE created_at >= NOW() - INTERVAL '1 day' * ${days} GROUP BY country ORDER BY count DESC LIMIT 10`;
+    const byReferer = await this.client`SELECT referer_domain as referer, COUNT(*)::int as count FROM visits WHERE created_at >= NOW() - INTERVAL '1 day' * ${days} AND referer_domain != '' GROUP BY referer_domain ORDER BY count DESC LIMIT 10`;
+    const byDevice = await this.client`SELECT device_type as device, COUNT(*)::int as count FROM visits WHERE created_at >= NOW() - INTERVAL '1 day' * ${days} GROUP BY device_type ORDER BY count DESC`;
+    const byPage = await this.client`SELECT path, COUNT(*)::int as count FROM visits WHERE created_at >= NOW() - INTERVAL '1 day' * ${days} GROUP BY path ORDER BY count DESC LIMIT 10`;
+    return {
+      visitsByDay: byDay.map(r => ({ date: r.date as string, count: r.count as number })),
+      topCountries: byCountry.map(r => ({ country: r.country as string, count: r.count as number })),
+      topReferers: byReferer.map(r => ({ referer: r.referer as string, count: r.count as number })),
+      deviceBreakdown: byDevice.map(r => ({ device: r.device as string, count: r.count as number })),
+      topPages: byPage.map(r => ({ path: r.path as string, count: r.count as number })),
+    };
   }
 }

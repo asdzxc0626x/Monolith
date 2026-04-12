@@ -4,12 +4,12 @@
    ────────────────────────────────────────────── */
 
 import { drizzle } from "drizzle-orm/d1";
-import { eq, desc, sql } from "drizzle-orm";
-import { posts, tags, postTags, pages, comments } from "../../db/schema";
+import { eq, desc, sql, inArray } from "drizzle-orm";
+import { posts, tags, postTags, pages, comments, reactions, visits, postVersions } from "../../db/schema";
 import type {
   IDatabase, Post, PostSummary, Tag, Page, PageSummary,
   CreatePostInput, UpdatePostInput, UpsertPageInput,
-  BackupData, ImportResult, ViewStats, Comment, CreateCommentInput,
+  BackupData, ImportResult, ViewStats, Comment, CreateCommentInput, PostVersion,
 } from "../interfaces";
 
 type DrizzleD1 = ReturnType<typeof drizzle>;
@@ -34,6 +34,10 @@ export class D1Adapter implements IDatabase {
         await this.ensureSettingsTable();
         await this.ensurePagesTable();
         await this.ensureCommentsTable();
+        await this.ensureSeriesColumns();
+        await this.ensureReactionsTable();
+        await this.ensureVisitsTable();
+        await this.ensureCategoryColumn();
       })();
     }
     await this.schemaReady;
@@ -97,6 +101,21 @@ export class D1Adapter implements IDatabase {
     }
   }
 
+  private async ensureSeriesColumns(): Promise<void> {
+    try {
+      await this.db.run(sql`ALTER TABLE posts ADD COLUMN series_slug TEXT`);
+    } catch { /* 已存在 */ }
+    try {
+      await this.db.run(sql`ALTER TABLE posts ADD COLUMN series_order INTEGER NOT NULL DEFAULT 0`);
+    } catch { /* 已存在 */ }
+  }
+
+  private async ensureCategoryColumn(): Promise<void> {
+    try {
+      await this.db.run(sql`ALTER TABLE posts ADD COLUMN category TEXT DEFAULT ''`);
+    } catch { /* 已存在 */ }
+  }
+
   private async ensurePagesTable(): Promise<void> {
     await this.db.run(sql`CREATE TABLE IF NOT EXISTS pages (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -136,6 +155,8 @@ export class D1Adapter implements IDatabase {
         createdAt: posts.createdAt,
         pinned: posts.pinned,
         publishAt: posts.publishAt,
+        seriesSlug: posts.seriesSlug,
+        category: posts.category,
       })
       .from(posts)
       .where(
@@ -154,6 +175,8 @@ export class D1Adapter implements IDatabase {
         tags: await this.getPostTags(post.id),
         pinned: post.pinned,
         publishAt: post.publishAt,
+        seriesSlug: post.seriesSlug || null,
+        category: post.category || "",
       }))
     );
   }
@@ -179,6 +202,9 @@ export class D1Adapter implements IDatabase {
         viewCount: post.viewCount ?? 0,
         pinned: post.pinned,
         publishAt: post.publishAt,
+        seriesSlug: post.seriesSlug || null,
+        category: post.category || "",
+        seriesOrder: post.seriesOrder ?? 0,
         tags: await this.getPostTags(post.id),
       }))
     );
@@ -207,6 +233,9 @@ export class D1Adapter implements IDatabase {
       viewCount: post.viewCount ?? 0,
       pinned: post.pinned,
       publishAt: post.publishAt,
+      seriesSlug: post.seriesSlug || null,
+      category: post.category || "",
+      seriesOrder: post.seriesOrder ?? 0,
       tags: await this.getPostTags(post.id),
     };
   }
@@ -224,6 +253,9 @@ export class D1Adapter implements IDatabase {
         listed: data.listed ?? true,
         pinned: data.pinned ?? false,
         publishAt: data.publishAt || null,
+        seriesSlug: data.seriesSlug || null,
+        category: data.category || "",
+        seriesOrder: data.seriesOrder ?? 0,
       })
       .returning();
 
@@ -245,6 +277,9 @@ export class D1Adapter implements IDatabase {
       viewCount: 0,
       pinned: newPost.pinned,
       publishAt: newPost.publishAt,
+      seriesSlug: newPost.seriesSlug || null,
+      category: newPost.category || "",
+      seriesOrder: newPost.seriesOrder ?? 0,
     };
   }
 
@@ -269,6 +304,9 @@ export class D1Adapter implements IDatabase {
         ...(data.listed !== undefined && { listed: data.listed }),
         ...(data.pinned !== undefined && { pinned: data.pinned }),
         ...(data.publishAt !== undefined && { publishAt: data.publishAt }),
+        ...(data.seriesSlug !== undefined && { seriesSlug: data.seriesSlug }),
+        ...(data.category !== undefined && { category: data.category }),
+        ...(data.seriesOrder !== undefined && { seriesOrder: data.seriesOrder }),
         updatedAt: sql`datetime('now')`,
       })
       .where(eq(posts.id, existing.id))
@@ -292,12 +330,79 @@ export class D1Adapter implements IDatabase {
       viewCount: updated.viewCount ?? 0,
       pinned: updated.pinned,
       publishAt: updated.publishAt,
+      seriesSlug: updated.seriesSlug || null,
+      category: updated.category || "",
+      seriesOrder: updated.seriesOrder ?? 0,
     };
   }
 
   async deletePost(slug: string): Promise<boolean> {
     const result = await this.db.delete(posts).where(eq(posts.slug, slug)).returning();
     return result.length > 0;
+  }
+
+  async batchOperatePosts(slugs: string[], action: "publish" | "unpublish" | "delete"): Promise<number> {
+    if (!slugs || slugs.length === 0) return 0;
+    if (action === "delete") {
+      const result = await this.db.delete(posts).where(inArray(posts.slug, slugs)).returning();
+      return result.length;
+    } else {
+      const published = action === "publish";
+      const result = await this.db.update(posts)
+        .set({ published, updatedAt: new Date().toISOString() })
+        .where(inArray(posts.slug, slugs))
+        .returning();
+      return result.length;
+    }
+  }
+
+  async publishScheduledPosts(): Promise<number> {
+    // D1 类似 Turso
+    const result = await this.db
+      .update(posts)
+      .set({ published: true })
+      .where(
+        sql`${posts.published} = 0 AND ${posts.publishAt} IS NOT NULL AND ${posts.publishAt} <= datetime('now')`
+      )
+      .returning();
+    return result.length;
+  }
+
+  /* ── 历史版本 ─────────────────────── */
+
+  async getPostVersions(slug: string): Promise<PostVersion[]> {
+    const post = await this.db.select({ id: posts.id }).from(posts).where(eq(posts.slug, slug)).get();
+    if (!post) return [];
+    return this.db.select().from(postVersions).where(eq(postVersions.postId, post.id)).orderBy(desc(postVersions.createdAt));
+  }
+
+  async createPostVersion(slug: string): Promise<boolean> {
+    const post = await this.db.select().from(posts).where(eq(posts.slug, slug)).get();
+    if (!post) return false;
+    await this.db.insert(postVersions).values({
+      postId: post.id,
+      title: post.title,
+      content: post.content,
+      excerpt: post.excerpt,
+    });
+    return true;
+  }
+
+  async restorePostVersion(slug: string, versionId: number): Promise<Post | null> {
+    const post = await this.db.select({ id: posts.id }).from(posts).where(eq(posts.slug, slug)).get();
+    if (!post) return null;
+    const version = await this.db.select().from(postVersions).where(eq(postVersions.id, versionId)).get();
+    if (!version || version.postId !== post.id) return null;
+
+    // 更新当前文章
+    await this.db.update(posts).set({
+      title: version.title,
+      content: version.content,
+      excerpt: version.excerpt,
+      updatedAt: sql`(datetime('now'))`,
+    }).where(eq(posts.id, post.id));
+
+    return this.getPostBySlug(slug) as Promise<Post | null>;
   }
 
   /* ── 标签 ─────────────────────── */
@@ -491,6 +596,9 @@ export class D1Adapter implements IDatabase {
         ...p,
         excerpt: p.excerpt || "",
         coverColor: p.coverColor || "",
+        category: p.category || "",
+        seriesSlug: p.seriesSlug || null,
+        seriesOrder: p.seriesOrder ?? 0,
       })),
       tags: allTags,
       postTags: allPostTags,
@@ -583,6 +691,8 @@ export class D1Adapter implements IDatabase {
         createdAt: posts.createdAt,
         pinned: posts.pinned,
         publishAt: posts.publishAt,
+        seriesSlug: posts.seriesSlug,
+        category: posts.category,
       })
       .from(posts)
       .where(
@@ -604,6 +714,8 @@ export class D1Adapter implements IDatabase {
         tags: await this.getPostTags(post.id),
         pinned: post.pinned,
         publishAt: post.publishAt,
+        seriesSlug: post.seriesSlug || null,
+        category: post.category || "",
       }))
     );
   }
@@ -770,5 +882,115 @@ export class D1Adapter implements IDatabase {
           WHERE p.slug = ${postSlug} AND c.approved = 1`
     );
     return (result.results?.[0] as { count: number } | undefined)?.count ?? 0;
+  }
+
+  async getSeriesPosts(seriesSlug: string): Promise<{ slug: string; title: string; seriesOrder: number }[]> {
+    const rows = await this.db
+      .select({ slug: posts.slug, title: posts.title, seriesOrder: posts.seriesOrder })
+      .from(posts)
+      .where(sql`${posts.seriesSlug} = ${seriesSlug} AND ${posts.published} = 1 AND (${posts.publishAt} IS NULL OR ${posts.publishAt} <= datetime('now'))`)
+      .orderBy(posts.seriesOrder);
+    return rows.map(r => ({ slug: r.slug, title: r.title, seriesOrder: r.seriesOrder ?? 0 }));
+  }
+
+  async getCategories(): Promise<{ name: string; count: number }[]> {
+    const result = await this.db.run(
+      sql`SELECT category as name, COUNT(*) as count FROM posts WHERE published = 1 AND (publish_at IS NULL OR publish_at <= datetime('now')) AND category != '' AND category IS NOT NULL GROUP BY category ORDER BY count DESC`
+    );
+    type Row = Record<string, unknown>;
+    return (result.results as Row[] || []).map(r => ({ name: r.name as string, count: r.count as number }));
+  }
+
+  private async ensureReactionsTable(): Promise<void> {
+    await this.db.run(sql`CREATE TABLE IF NOT EXISTS reactions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      post_slug TEXT NOT NULL,
+      type TEXT NOT NULL,
+      ip_hash TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(post_slug, type, ip_hash)
+    )`);
+  }
+
+  async getReactions(postSlug: string): Promise<Record<string, number>> {
+    const rows = await this.db
+      .select({ type: reactions.type, count: sql<number>`COUNT(*)` })
+      .from(reactions)
+      .where(eq(reactions.postSlug, postSlug))
+      .groupBy(reactions.type);
+    const result: Record<string, number> = {};
+    for (const row of rows) {
+      result[row.type] = row.count;
+    }
+    return result;
+  }
+
+  async toggleReaction(postSlug: string, type: string, ipHash: string): Promise<{ action: "added" | "removed" }> {
+    await this.ensureReactionsTable();
+    // 检查是否已存在
+    const [existing] = await this.db
+      .select()
+      .from(reactions)
+      .where(sql`${reactions.postSlug} = ${postSlug} AND ${reactions.type} = ${type} AND ${reactions.ipHash} = ${ipHash}`)
+      .limit(1);
+    if (existing) {
+      await this.db.delete(reactions).where(eq(reactions.id, existing.id));
+      return { action: "removed" };
+    }
+    await this.db.insert(reactions).values({ postSlug, type, ipHash });
+    return { action: "added" };
+  }
+
+  private async ensureVisitsTable(): Promise<void> {
+    await this.db.run(sql`CREATE TABLE IF NOT EXISTS visits (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      path TEXT NOT NULL,
+      country TEXT NOT NULL DEFAULT 'XX',
+      referer_domain TEXT NOT NULL DEFAULT '',
+      device_type TEXT NOT NULL DEFAULT 'desktop',
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`);
+  }
+
+  async recordVisit(data: { path: string; country: string; refererDomain: string; deviceType: string }): Promise<void> {
+    await this.ensureVisitsTable();
+    await this.db.insert(visits).values({
+      path: data.path,
+      country: data.country,
+      refererDomain: data.refererDomain,
+      deviceType: data.deviceType,
+    });
+  }
+
+  async getAnalytics(daysInput: number) {
+    await this.ensureVisitsTable();
+    let days = Math.max(0, parseInt(String(daysInput), 10));
+    if (isNaN(days)) days = 7;
+    const sinceMod = `-${days} days`;
+
+    const byDay = await this.db.run(
+      sql`SELECT DATE(created_at) as date, COUNT(*) as count FROM visits WHERE created_at >= datetime('now', ${sinceMod}) GROUP BY DATE(created_at) ORDER BY date`
+    );
+    const byCountry = await this.db.run(
+      sql`SELECT country, COUNT(*) as count FROM visits WHERE created_at >= datetime('now', ${sinceMod}) GROUP BY country ORDER BY count DESC LIMIT 10`
+    );
+    const byReferer = await this.db.run(
+      sql`SELECT referer_domain as referer, COUNT(*) as count FROM visits WHERE created_at >= datetime('now', ${sinceMod}) AND referer_domain != '' GROUP BY referer_domain ORDER BY count DESC LIMIT 10`
+    );
+    const byDevice = await this.db.run(
+      sql`SELECT device_type as device, COUNT(*) as count FROM visits WHERE created_at >= datetime('now', ${sinceMod}) GROUP BY device_type ORDER BY count DESC`
+    );
+    const byPage = await this.db.run(
+      sql`SELECT path, COUNT(*) as count FROM visits WHERE created_at >= datetime('now', ${sinceMod}) GROUP BY path ORDER BY count DESC LIMIT 10`
+    );
+
+    type Row = Record<string, unknown>;
+    return {
+      visitsByDay: (byDay.results as Row[] || []).map(r => ({ date: r.date as string, count: r.count as number })),
+      topCountries: (byCountry.results as Row[] || []).map(r => ({ country: r.country as string, count: r.count as number })),
+      topReferers: (byReferer.results as Row[] || []).map(r => ({ referer: r.referer as string, count: r.count as number })),
+      deviceBreakdown: (byDevice.results as Row[] || []).map(r => ({ device: r.device as string, count: r.count as number })),
+      topPages: (byPage.results as Row[] || []).map(r => ({ path: r.path as string, count: r.count as number })),
+    };
   }
 }

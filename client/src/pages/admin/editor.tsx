@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useLocation } from "wouter";
-import { fetchPost, createPost, updatePost, uploadImage, localizePostImages } from "@/lib/api";
+import { fetchPost, createPost, updatePost, uploadImage, localizePostImages, fetchPostVersions, restorePostVersion, type PostVersion } from "@/lib/api";
 import { renderMarkdown } from "@/lib/markdown";
-import { ArrowLeft, Save, Eye, EyeOff, Upload, Image, ChevronDown, ChevronUp, Bold, Italic, Heading2, Heading3, Link2, Code, Quote, List, ListOrdered, Minus, Maximize2, Minimize2, Table, CheckSquare, FileCode, ImageDown } from "lucide-react";
+import { ArrowLeft, Save, Eye, EyeOff, Upload, Image, ChevronDown, ChevronUp, Bold, Italic, Heading2, Heading3, Link2, Code, Quote, List, ListOrdered, Minus, Maximize2, Minimize2, Table, CheckSquare, FileCode, ImageDown, History, Check, X } from "lucide-react";
 import { Link } from "wouter";
 import Editor, { type Monaco } from "@monaco-editor/react";
 import type * as MonacoTypes from "monaco-editor";
@@ -118,6 +118,9 @@ export function AdminEditor() {
     published: true,
     pinned: false,
     publishAt: "",
+    seriesSlug: "",
+    seriesOrder: 0,
+    category: "",
   });
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ text: "", type: "" as "" | "success" | "error" });
@@ -128,6 +131,17 @@ export function AdminEditor() {
   const [zenMode, setZenMode] = useState(false);
   const [autoSlug, setAutoSlug] = useState(!isEdit);
   const [lastSaved, setLastSaved] = useState<string>("");
+
+  const [saveVersion, setSaveVersion] = useState(false);
+  const [versions, setVersions] = useState<PostVersion[]>([]);
+  const [showVersions, setShowVersions] = useState(false);
+  const [restoring, setRestoring] = useState(false);
+
+  useEffect(() => {
+    if (isEdit && params.slug) {
+      fetchPostVersions(params.slug).then(setVersions).catch(() => {});
+    }
+  }, [isEdit, params.slug, lastSaved]);
 
   useEffect(() => {
     document.title = isEdit ? "编辑文章 | Monolith" : "新建文章 | Monolith";
@@ -144,6 +158,9 @@ export function AdminEditor() {
           published: post.published,
           pinned: post.pinned,
           publishAt: post.publishAt ? new Date(new Date(post.publishAt).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : "",
+          seriesSlug: post.seriesSlug || "",
+          seriesOrder: post.seriesOrder ?? 0,
+          category: post.category || "",
         });
         setAutoSlug(false);
       });
@@ -208,13 +225,17 @@ export function AdminEditor() {
         tags: tagsList,
         pinned: form.pinned,
         publishAt: form.publishAt ? new Date(form.publishAt).toISOString() : null,
+        seriesSlug: form.seriesSlug || null,
+        seriesOrder: form.seriesOrder,
+        category: form.category,
       };
 
       if (isEdit && params.slug) {
-        await updatePost(params.slug, payload);
+        await updatePost(params.slug, { ...payload, saveVersion });
         setLastSaved(new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }));
-        showMsg("已保存", "success");
+        showMsg("已保存" + (saveVersion ? "并创建了版本快照" : ""), "success");
         clearDraft(params.slug);
+        if (saveVersion) setSaveVersion(false);
       } else {
         await createPost(payload);
         showMsg("已创建，即将跳转...", "success");
@@ -228,13 +249,86 @@ export function AdminEditor() {
     }
   };
 
+  const handleRestore = async (version: PostVersion) => {
+    if (!params.slug) return;
+    if (!confirm(`确定要恢复到 ${new Date(version.createdAt).toLocaleString()} 的版本吗？当前未保存的修改将丢失。`)) return;
+    setRestoring(true);
+    try {
+      const { post } = await restorePostVersion(params.slug, version.id);
+      setForm((prev) => ({
+        ...prev,
+        title: post.title,
+        content: post.content,
+        excerpt: post.excerpt || "",
+      }));
+      const editor = editorRef.current;
+      if (editor) {
+        const model = editor.getModel();
+        if (model) model.setValue(post.content);
+      }
+      showMsg("版本已恢复", "success");
+      setLastSaved(new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }));
+      setShowVersions(false);
+    } catch (err: any) {
+      showMsg(err.message || "恢复失败", "error");
+    } finally {
+      setRestoring(false);
+    }
+  };
+
   const handleImageUpload = async (file: File) => {
     setUploading(true);
+    const placeholder = `![上传中... ${file.name}](uploading)`;
+    insertText(placeholder);
     try {
       const result = await uploadImage(file);
-      insertText(`![${file.name}](${result.url})`);
+      // 替换占位符为实际 URL
+      const editor = editorRef.current;
+      if (editor) {
+        const model = editor.getModel();
+        if (model) {
+          const fullText = model.getValue();
+          const idx = fullText.indexOf(placeholder);
+          if (idx !== -1) {
+            const before = fullText.substring(0, idx);
+            const startLine = (before.match(/\n/g) || []).length + 1;
+            const startCol = before.length - before.lastIndexOf("\n");
+            const endCol = startCol + placeholder.length;
+            editor.executeEdits("paste-image", [{
+              range: {
+                startLineNumber: startLine,
+                startColumn: startCol,
+                endLineNumber: startLine,
+                endColumn: endCol,
+              },
+              text: `![${file.name}](${result.url})`,
+            }]);
+          } else {
+            // 占位符未找到（可能被手动删除），直接插入
+            insertText(`![${file.name}](${result.url})`);
+          }
+        }
+      } else {
+        // fallback：直接替换 form 中的内容
+        setForm((prev) => ({
+          ...prev,
+          content: prev.content.replace(placeholder, `![${file.name}](${result.url})`),
+        }));
+      }
       showMsg("图片已上传", "success");
     } catch {
+      // 上传失败，移除占位符
+      const editor = editorRef.current;
+      if (editor) {
+        const model = editor.getModel();
+        if (model) {
+          const fullText = model.getValue();
+          const newText = fullText.replace(placeholder, "");
+          model.setValue(newText);
+        }
+      } else {
+        setForm((prev) => ({ ...prev, content: prev.content.replace(placeholder, "") }));
+      }
       showMsg("图片上传失败", "error");
     } finally {
       setUploading(false);
@@ -399,6 +493,19 @@ export function AdminEditor() {
             <input type="checkbox" checked={form.pinned} onChange={(e) => updateField("pinned", e.target.checked)} className="rounded accent-amber-500" />
             置顶
           </label>
+          {isEdit && (
+            <>
+              <div className="h-[14px] w-[1px] bg-border/20 mx-[2px]"></div>
+              <button onClick={() => setShowVersions(true)} title="历史版本" className="relative h-[30px] px-[8px] rounded-md text-muted-foreground/40 hover:text-foreground hover:bg-accent/20 transition-colors">
+                <History className="h-[13px] w-[13px]" />
+                {versions.length > 0 && <span className="absolute top-[4px] right-[4px] h-[4px] w-[4px] rounded-full bg-cyan-500"></span>}
+              </button>
+              <label title="保存时生成一份文章内容的历史快照" className="flex items-center gap-[4px] text-[12px] text-muted-foreground/50 hover:text-muted-foreground/80 cursor-pointer select-none transition-colors mr-[4px]">
+                <input type="checkbox" checked={saveVersion} onChange={(e) => setSaveVersion(e.target.checked)} className="rounded accent-foreground" />
+                建快照
+              </label>
+            </>
+          )}
           <button onClick={handleSave} disabled={saving} className="inline-flex items-center gap-[4px] h-[30px] px-[12px] rounded-md bg-foreground text-background text-[12px] font-medium hover:opacity-90 disabled:opacity-50 transition-opacity">
             <Save className="h-[11px] w-[11px]" />{saving ? "保存中..." : "保存"}
           </button>
@@ -445,7 +552,7 @@ export function AdminEditor() {
 
           {!metaCollapsed && (
             <div className="px-[16px] pb-[14px] pt-[2px]">
-              <div className="grid grid-cols-1 gap-[8px] sm:grid-cols-3">
+              <div className="grid grid-cols-1 gap-[8px] sm:grid-cols-3 lg:grid-cols-5">
                 <div>
                   <label className="mb-[2px] block text-[10px] text-muted-foreground/35 uppercase tracking-wider">Slug {autoSlug && <span className="text-blue-400/50">（自动）</span>}</label>
                   <input
@@ -483,6 +590,24 @@ export function AdminEditor() {
                       />
                     ))}
                   </div>
+                </div>
+                <div>
+                  <label className="mb-[2px] block text-[10px] text-muted-foreground/35 uppercase tracking-wider">系列 Slug</label>
+                  <input
+                    value={form.seriesSlug}
+                    onChange={(e) => updateField("seriesSlug", e.target.value)}
+                    placeholder="如 react-tutorial"
+                    className="h-[30px] w-full rounded-md border border-border/25 bg-background/20 px-[10px] text-[12px] text-foreground font-mono placeholder:text-muted-foreground/20 outline-none focus:border-foreground/15 transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="mb-[2px] block text-[10px] text-muted-foreground/35 uppercase tracking-wider">分类</label>
+                  <input
+                    value={form.category}
+                    onChange={(e) => updateField("category", e.target.value)}
+                    placeholder="如 前端、后端、DevOps"
+                    className="h-[30px] w-full rounded-md border border-border/25 bg-background/20 px-[10px] text-[12px] text-foreground placeholder:text-muted-foreground/20 outline-none focus:border-foreground/15 transition-colors"
+                  />
                 </div>
               </div>
               <input
@@ -537,7 +662,35 @@ export function AdminEditor() {
               onChange={(val) => updateField("content", val || "")}
               theme="monolith-dark"
               beforeMount={handleEditorWillMount}
-              onMount={(editor) => { editorRef.current = editor; }}
+              onMount={(editor) => {
+                editorRef.current = editor;
+                // 监听 Monaco 编辑器的 paste 事件（处理粘贴图片）
+                const domNode = editor.getDomNode();
+                if (domNode) {
+                  domNode.addEventListener("paste", (e: Event) => {
+                    const ce = e as ClipboardEvent;
+                    const items = ce.clipboardData?.items;
+                    if (!items) return;
+                    for (const item of items) {
+                      if (item.type.startsWith("image/")) {
+                        ce.preventDefault();
+                        ce.stopPropagation();
+                        const file = item.getAsFile();
+                        if (file) handleImageUpload(file);
+                        return;
+                      }
+                    }
+                  });
+                  // 拖拽上传
+                  domNode.addEventListener("drop", (e: Event) => {
+                    const de = e as DragEvent;
+                    de.preventDefault();
+                    const file = de.dataTransfer?.files[0];
+                    if (file?.type.startsWith("image/")) handleImageUpload(file);
+                  });
+                  domNode.addEventListener("dragover", (e: Event) => { e.preventDefault(); });
+                }
+              }}
               options={{
                 minimap: { enabled: false },
                 fontSize: 14,
@@ -586,9 +739,54 @@ export function AdminEditor() {
           <span><kbd className="px-[4px] py-[1px] rounded border border-border/15 text-[9px]">Ctrl+S</kbd> 保存</span>
           <span><kbd className="px-[4px] py-[1px] rounded border border-border/15 text-[9px]">Ctrl+B</kbd> 粗体</span>
           <span><kbd className="px-[4px] py-[1px] rounded border border-border/15 text-[9px]">Ctrl+I</kbd> 斜体</span>
-          <span>拖拽/粘贴上传图片</span>
+          <span><kbd className="px-[4px] py-[1px] rounded border border-border/15 text-[9px]">Ctrl+V</kbd> 粘贴图片</span>
+          <span>拖拽上传图片</span>
         </div>
       )}
+
+      {/* ─── 历史版本弹窗 ─── */}
+      {showVersions && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-[20px]">
+          <div className="w-full max-w-[560px] bg-card rounded-xl border border-border/20 shadow-2xl flex flex-col max-h-[85vh]">
+            <div className="flex items-center justify-between px-[20px] py-[16px] border-b border-border/10 shrink-0">
+              <h3 className="text-[16px] font-semibold flex items-center gap-[8px]">
+                <History className="h-[16px] w-[16px] text-cyan-400" /> 文章历史版本 ({versions.length})
+              </h3>
+              <button disabled={restoring} onClick={() => setShowVersions(false)} className="text-muted-foreground/40 hover:text-foreground transition-colors disabled:opacity-50">
+                <X className="h-[18px] w-[18px]" />
+              </button>
+            </div>
+            
+            <div className="p-[20px] flex-1 overflow-y-auto min-h-0 space-y-[10px]">
+              {versions.length === 0 ? (
+                <div className="text-center py-[40px] text-muted-foreground/40 text-[13px]">
+                  暂无历史版本快照。<br/>请在保存文章前勾选「建快照」。
+                </div>
+              ) : (
+                versions.map((v, i) => (
+                  <div key={v.id} className="group flex items-center justify-between p-[14px] rounded-lg border border-border/15 bg-card/5 hover:border-cyan-500/30 hover:bg-cyan-500/5 transition-all">
+                    <div>
+                      <div className="text-[14px] font-medium text-foreground/90 mb-[4px]">{new Date(v.createdAt).toLocaleString()}</div>
+                      <div className="text-[12px] text-muted-foreground/50">
+                        {v.content.length} 字符
+                        {i === 0 && <span className="ml-[8px] text-[10px] bg-emerald-500/10 text-emerald-400 px-[6px] py-[2px] rounded-[4px]">最新快照</span>}
+                      </div>
+                    </div>
+                    <button
+                      disabled={restoring}
+                      onClick={() => handleRestore(v)}
+                      className="opacity-0 group-hover:opacity-100 px-[14px] py-[6px] rounded-md bg-cyan-500 text-white text-[12px] font-medium transition-all hover:bg-cyan-600 disabled:opacity-50"
+                    >
+                      恢复此版本
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

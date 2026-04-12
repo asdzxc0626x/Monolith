@@ -65,22 +65,96 @@ renderer.heading = ({ text, depth }: { text: string; depth: number }) => {
   return `<h${depth} id="${id}">${text}</h${depth}>`;
 };
 
-// 代码块：高亮 + 语言标签 + 复制按钮
+// 代码块：高亮 + 语言标签 + 复制按钮 + 行号 + 标题 + 行高亮
 renderer.code = ({ text, lang }: { text: string; lang?: string }) => {
-  const language = lang && hljs.getLanguage(lang) ? lang : "";
+  // 解析语言标识和元信息，如 ts{1,3-5} 或 ts title="app.ts" 或 ts{1,3-5} title="app.ts"
+  let language = "";
+  let title = "";
+  let highlightLines = new Set<number>();
+
+  if (lang) {
+    // 提取 title="xxx" 或 title='xxx' 或 title=filename.ext（无空格）
+    const titleMatch = lang.match(/title=["']([^"']+)["']/) || lang.match(/title=([\w./-]+)/);
+    if (titleMatch) title = titleMatch[1];
+
+    // 提取 {1,3-5,8} 行高亮
+    const hlMatch = lang.match(/\{([\d,\s-]+)\}/);
+    if (hlMatch) {
+      hlMatch[1].split(",").forEach((seg) => {
+        seg = seg.trim();
+        const rangeMatch = seg.match(/^(\d+)-(\d+)$/);
+        if (rangeMatch) {
+          const start = parseInt(rangeMatch[1]);
+          const end = parseInt(rangeMatch[2]);
+          for (let i = start; i <= end; i++) highlightLines.add(i);
+        } else if (/^\d+$/.test(seg)) {
+          highlightLines.add(parseInt(seg));
+        }
+      });
+    }
+
+    // 提取纯语言名（去掉 {n} 和 title=xxx）
+    const pureLang = lang
+      .replace(/\{[\d,\s-]+\}/, "")
+      .replace(/title=["'][^"']+["']/, "")
+      .replace(/title=[\w./-]+/, "")
+      .trim();
+    language = pureLang && hljs.getLanguage(pureLang) ? pureLang : "";
+  }
+
+  // 检测是否为 diff 语言（特殊高亮 +/- 行）
+  const isDiff = language === "diff";
+
   const highlighted = language
     ? hljs.highlight(text, { language }).value
     : escapeHtml(text);
-  const langLabel = language ? `<span class="code-lang">${language}</span>` : "";
-  
-  const copyIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`;
-  const checkIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-400"><path d="M20 6 9 17l-5-5"/></svg>`;
 
-  return `<div class="code-block-wrapper relative group">
-    <button class="copy-code-btn absolute top-2 right-2 flex items-center justify-center p-1.5 rounded-md border border-border/40 bg-card/60 text-muted-foreground transition-all duration-200 hover:text-foreground hover:bg-card hover:border-border/80 opacity-40 hover:opacity-100 group-hover:opacity-100 z-10" aria-label="复制代码">
+  // 拆分为行，生成行号和高亮标记
+  const lines = highlighted.split("\n");
+  const rawLines = text.split("\n");
+  
+  // 去掉末尾空行
+  if (lines.length > 0 && lines[lines.length - 1].trim() === "") lines.pop();
+
+  const showLineNumbers = lines.length > 1; // 单行不显示行号
+
+  const codeLines = lines.map((line, i) => {
+    const lineNum = i + 1;
+    const isHighlighted = highlightLines.has(lineNum);
+
+    // diff 高亮：检测原始文本行前缀
+    // eslint-disable-next-line security/detect-object-injection
+    const rawLine = rawLines[i] || "";
+    let diffClass = "";
+    if (isDiff) {
+      if (rawLine.startsWith("+")) diffClass = " diff-add";
+      else if (rawLine.startsWith("-")) diffClass = " diff-del";
+    }
+
+    const hlClass = isHighlighted ? " line-highlight" : "";
+    const numHtml = showLineNumbers ? `<span class="line-number">${lineNum}</span>` : "";
+
+    return `<span class="code-line${hlClass}${diffClass}">${numHtml}<span class="line-content">${line}</span></span>`;
+  }).join("\n");
+
+  // 标题栏
+  const titleBar = title
+    ? `<div class="code-title-bar"><span class="code-title-dots"><span></span><span></span><span></span></span><span class="code-title-text">${escapeHtml(title)}</span></div>`
+    : "";
+
+  const langLabel = language ? `<span class="code-lang">${language}</span>` : "";
+
+  const copyIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`;
+
+  const hasTitle = title ? " has-title" : "";
+  const hasLineNums = showLineNumbers ? " has-line-numbers" : "";
+
+  return `<div class="code-block-wrapper relative group${hasTitle}${hasLineNums}">
+    ${titleBar}
+    <button class="copy-code-btn absolute ${title ? "top-[42px]" : "top-2"} right-2 flex items-center justify-center p-1.5 rounded-md border border-border/40 bg-card/60 text-muted-foreground transition-all duration-200 hover:text-foreground hover:bg-card hover:border-border/80 opacity-40 hover:opacity-100 group-hover:opacity-100 z-10" aria-label="复制代码">
       ${copyIcon}
     </button>
-    <pre class="hljs">${langLabel}<code class="hljs language-${language || "text"}">${highlighted}</code></pre>
+    <pre class="hljs">${langLabel}<code class="hljs language-${language || "text"}">${codeLines}</code></pre>
   </div>`;
 };
 
@@ -120,8 +194,8 @@ renderer.image = ({ href, title, text }: { href: string; title?: string | null; 
     </figure>`;
   }
 
-  // 默认图片渲染
-  return `<figure class="md-figure"><img src="${href}" alt="${escapeHtml(text)}" loading="lazy" decoding="async"${titleAttr}/>${text ? `<figcaption>${escapeHtml(text)}</figcaption>` : ""}</figure>`;
+  // 默认图片渲染 — 懒加载 + 渐进淡入
+  return `<figure class="md-figure"><img src="${href}" alt="${escapeHtml(text)}" loading="lazy" decoding="async" data-lazy-img${titleAttr} class="lazy-img"/>${text ? `<figcaption>${escapeHtml(text)}</figcaption>` : ""}</figure>`;
 };
 
 // 表格：响应式包裹
@@ -165,7 +239,7 @@ export function renderMarkdown(md: string): string {
     ADD_ATTR: [
       "allow", "allowfullscreen", "frameborder", "scrolling",
       "playsinline", "preload", "controls",
-      "loading", "decoding",
+      "loading", "decoding", "data-lazy-img",
       "target", "rel",
     ],
   });

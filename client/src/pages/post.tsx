@@ -1,14 +1,18 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useParams } from "wouter";
 import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { fetchPost, type Post } from "@/lib/api";
 import { renderMarkdown, extractHeadings } from "@/lib/markdown";
-import { ArrowLeft, Eye } from "lucide-react";
+import { ArrowLeft, Eye, BookOpen, X } from "lucide-react";
 import { TableOfContents, ReadingProgressBar } from "@/components/toc";
 import { SeoHead } from "@/components/seo-head";
 import { CommentsSection } from "@/components/comments";
+import { RelatedPosts } from "@/components/related-posts";
+import { SeriesNav } from "@/components/series-nav";
+import { PostReactions } from "@/components/post-reactions";
+import { ShareButtons } from "@/components/share-buttons";
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" });
@@ -19,6 +23,28 @@ export function PostPage() {
   const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [readingMode, setReadingMode] = useState(false);
+
+  // 阅读模式切换
+  const toggleReadingMode = useCallback(() => {
+    setReadingMode((prev) => {
+      const next = !prev;
+      document.documentElement.classList.toggle("reading-mode", next);
+      return next;
+    });
+  }, []);
+
+  // ESC 退出阅读模式
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && readingMode) toggleReadingMode();
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => {
+      window.removeEventListener("keydown", handleKey);
+      document.documentElement.classList.remove("reading-mode");
+    };
+  }, [readingMode, toggleReadingMode]);
 
   useEffect(() => {
     if (!params.slug) return;
@@ -39,6 +65,38 @@ export function PostPage() {
     if (!post) return "";
     return renderMarkdown(post.content);
   }, [post]);
+
+  // 图片渐进淡入（Intersection Observer）
+  const contentRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!contentRef.current) return;
+    const imgs = contentRef.current.querySelectorAll<HTMLImageElement>("img[data-lazy-img]");
+    if (imgs.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const img = entry.target as HTMLImageElement;
+            img.classList.add("lazy-img--loaded");
+            observer.unobserve(img);
+          }
+        });
+      },
+      { rootMargin: "100px", threshold: 0.01 }
+    );
+
+    imgs.forEach((img) => {
+      if (img.complete) {
+        img.classList.add("lazy-img--loaded");
+      } else {
+        img.addEventListener("load", () => img.classList.add("lazy-img--loaded"), { once: true });
+        observer.observe(img);
+      }
+    });
+
+    return () => observer.disconnect();
+  }, [htmlContent]);
 
   if (loading) {
     return (
@@ -89,6 +147,16 @@ export function PostPage() {
             <ArrowLeft className="h-[14px] w-[14px]" />返回首页
           </Link>
 
+          {/* 阅读模式按钮 */}
+          <button
+            onClick={toggleReadingMode}
+            className="reading-mode-toggle mb-[24px] inline-flex items-center gap-[6px] rounded-full border border-border/30 bg-card/40 px-[14px] py-[6px] text-[12px] text-muted-foreground/60 transition-all duration-300 hover:bg-card hover:text-foreground hover:border-border/60 animate-fade-in"
+            title="切换阅读模式 (ESC 退出)"
+          >
+            <BookOpen className="h-[14px] w-[14px]" />
+            {readingMode ? "退出阅读模式" : "阅读模式"}
+          </button>
+
           <header className="mb-[32px] animate-fade-in-up delay-1">
             <div className={`mb-[24px] h-[3px] w-[60px] rounded-full bg-gradient-to-r ${post.coverColor || "from-gray-500/20 to-gray-600/20"}`} />
             <div className="mb-[16px] flex flex-wrap items-center gap-[8px]">
@@ -113,6 +181,7 @@ export function PostPage() {
 
           {/* 文章正文，同时处理代码块复制逻辑 */}
           <div 
+            ref={contentRef}
             className="prose-monolith animate-fade-in delay-3" 
             dangerouslySetInnerHTML={{ __html: htmlContent }} 
             onClick={(e) => {
@@ -137,12 +206,28 @@ export function PostPage() {
           />
 
           <Separator className="mt-[48px] bg-border/30" />
-          <div className="mt-[24px] flex items-center justify-between animate-fade-in delay-4">
-            <Link href="/" className="inline-flex items-center gap-[6px] text-[13px] text-muted-foreground/60 transition-all duration-200 hover:text-foreground hover:-translate-x-[2px]">
-              <ArrowLeft className="h-[14px] w-[14px]" />返回首页
-            </Link>
-            <span className="text-[12px] text-muted-foreground/40">发布于 {formatDate(post.createdAt)}</span>
+          <div className="mt-[24px] flex items-center justify-between flex-wrap gap-[16px] animate-fade-in delay-4">
+            <div className="flex items-center gap-[16px]">
+              <Link href="/" className="inline-flex items-center gap-[6px] text-[13px] text-muted-foreground/60 transition-all duration-200 hover:text-foreground hover:-translate-x-[2px]">
+                <ArrowLeft className="h-[14px] w-[14px]" />返回首页
+              </Link>
+              <span className="text-[12px] text-muted-foreground/40 hidden sm:inline-block">发布于 {formatDate(post.createdAt)}</span>
+            </div>
+            
+            {/* 分享按钮组件 */}
+            <ShareButtons title={post.title} />
           </div>
+
+          {/* 表情反应 */}
+          <PostReactions slug={post.slug} />
+
+          {/* 系列导航 */}
+          {post.seriesSlug && (
+            <SeriesNav seriesSlug={post.seriesSlug} currentSlug={post.slug} />
+          )}
+
+          {/* 相关推荐 */}
+          <RelatedPosts currentSlug={post.slug} currentTags={post.tags} />
 
           {/* 评论区 */}
           <CommentsSection slug={post.slug} />
@@ -153,6 +238,17 @@ export function PostPage() {
           <TableOfContents headings={headings} />
         )}
       </div>
+
+      {/* 阅读模式浮动退出按钮 */}
+      {readingMode && (
+        <button
+          onClick={toggleReadingMode}
+          className="reading-mode-exit-fab"
+          title="退出阅读模式 (ESC)"
+        >
+          <X className="h-[16px] w-[16px]" />
+        </button>
+      )}
     </>
   );
 }
