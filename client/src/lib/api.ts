@@ -15,6 +15,7 @@ export type PostMeta = {
   pinned: boolean;
   publishAt: string | null;
   seriesSlug: string | null;
+  category: string;
 };
 
 export type Post = PostMeta & {
@@ -42,6 +43,14 @@ export async function fetchPost(slug: string): Promise<Post> {
 export async function fetchTags(): Promise<{ id: number; name: string }[]> {
   const res = await fetch(`${API_BASE}/api/tags`);
   if (!res.ok) throw new Error("获取标签失败");
+  return res.json();
+}
+
+export type CategoryInfo = { name: string; count: number };
+
+export async function fetchCategories(): Promise<CategoryInfo[]> {
+  const res = await fetch(`${API_BASE}/api/categories`);
+  if (!res.ok) return [];
   return res.json();
 }
 

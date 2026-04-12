@@ -171,6 +171,7 @@ export class PostgresAdapter implements IDatabase {
         pinned: post.pinned,
         publishAt: this.ts(post.publishAt),
         seriesSlug: post.seriesSlug || null,
+        category: post.category || "",
       }))
     );
   }
@@ -197,6 +198,7 @@ export class PostgresAdapter implements IDatabase {
         pinned: post.pinned,
         publishAt: this.ts(post.publishAt),
         seriesSlug: post.seriesSlug || null,
+        category: post.category || "",
         seriesOrder: post.seriesOrder ?? 0,
         tags: await this.getPostTags(post.id),
       }))
@@ -227,6 +229,7 @@ export class PostgresAdapter implements IDatabase {
       pinned: post.pinned,
       publishAt: this.ts(post.publishAt),
       seriesSlug: post.seriesSlug || null,
+      category: post.category || "",
       seriesOrder: post.seriesOrder ?? 0,
       tags: await this.getPostTags(post.id),
     };
@@ -246,6 +249,7 @@ export class PostgresAdapter implements IDatabase {
         pinned: data.pinned ?? false,
         publishAt: data.publishAt ? sql`${data.publishAt}::timestamptz` : null,
         seriesSlug: data.seriesSlug || null,
+        category: data.category || "",
         seriesOrder: data.seriesOrder ?? 0,
       })
       .returning();
@@ -269,6 +273,7 @@ export class PostgresAdapter implements IDatabase {
       pinned: newPost.pinned,
       publishAt: this.ts(newPost.publishAt),
       seriesSlug: newPost.seriesSlug || null,
+      category: newPost.category || "",
       seriesOrder: newPost.seriesOrder ?? 0,
     };
   }
@@ -295,6 +300,7 @@ export class PostgresAdapter implements IDatabase {
         ...(data.pinned !== undefined && { pinned: data.pinned }),
         ...(data.publishAt !== undefined && { publishAt: data.publishAt ? sql`${data.publishAt}::timestamptz` : null }),
         ...(data.seriesSlug !== undefined && { seriesSlug: data.seriesSlug }),
+        ...(data.category !== undefined && { category: data.category }),
         ...(data.seriesOrder !== undefined && { seriesOrder: data.seriesOrder }),
         updatedAt: sql`NOW()`,
       })
@@ -320,6 +326,7 @@ export class PostgresAdapter implements IDatabase {
       pinned: updated.pinned,
       publishAt: this.ts(updated.publishAt),
       seriesSlug: updated.seriesSlug || null,
+      category: updated.category || "",
       seriesOrder: updated.seriesOrder ?? 0,
     };
   }
@@ -803,6 +810,15 @@ export class PostgresAdapter implements IDatabase {
       ORDER BY series_order ASC
     `;
     return rows.map(r => ({ slug: r.slug as string, title: r.title as string, seriesOrder: (r.series_order as number) ?? 0 }));
+  }
+
+  async getCategories(): Promise<{ name: string; count: number }[]> {
+    const rows = await this.client`
+      SELECT category as name, COUNT(*)::int as count FROM posts
+      WHERE published = true AND category != '' AND category IS NOT NULL
+      GROUP BY category ORDER BY count DESC
+    `;
+    return rows.map(r => ({ name: r.name as string, count: r.count as number }));
   }
 
   async getReactions(postSlug: string): Promise<Record<string, number>> {

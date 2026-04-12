@@ -23,6 +23,7 @@ export const pgPosts = pgTable("posts", {
   publishAt: timestamp("publish_at", { withTimezone: true }),
   seriesSlug: text("series_slug"),
   seriesOrder: integer("series_order").notNull().default(0),
+  category: text("category").default(""),
 });
 
 /* ── 标签表 ────────────────────────────────── */

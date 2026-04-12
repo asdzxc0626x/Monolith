@@ -3,10 +3,10 @@ import { Hero } from "@/components/hero";
 import { ArticleCard } from "@/components/article-card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { fetchPosts, type PostMeta } from "@/lib/api";
+import { fetchPosts, fetchCategories, type PostMeta, type CategoryInfo } from "@/lib/api";
 import { AnimateIn } from "@/hooks/use-animate";
 import { SeoHead } from "@/components/seo-head";
-import { ExternalLink, Mail, Rss, Eye } from "lucide-react";
+import { ExternalLink, Mail, Rss, Eye, FolderOpen } from "lucide-react";
 
 type PublicSettings = {
   site_title: string;
@@ -65,6 +65,7 @@ export function HomePage() {
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState<PublicSettings | null>(null);
   const [traffic, setTraffic] = useState<TrafficData | null>(null);
+  const [categories, setCategories] = useState<CategoryInfo[]>([]);
 
   useEffect(() => {
     fetchPosts()
@@ -81,6 +82,8 @@ export function HomePage() {
       .then((r) => r.json())
       .then((data) => setTraffic(data))
       .catch(() => {});
+
+    fetchCategories().then(setCategories).catch(() => {});
   }, []);
 
   const allTags = Array.from(new Set(posts.flatMap((p) => p.tags)));
@@ -178,6 +181,25 @@ export function HomePage() {
                   <div className="flex flex-wrap gap-[6px]">
                     {allTags.map((tag) => (
                       <Badge key={tag} variant="outline" className="h-[24px] rounded-[4px] px-[8px] text-[12px] font-normal text-muted-foreground transition-colors duration-200 hover:bg-accent hover:text-foreground cursor-pointer">{tag}</Badge>
+                    ))}
+                  </div>
+                </div>
+              </AnimateIn>
+            )}
+            {/* ── 分类（无分类时隐藏） ── */}
+            {categories.length > 0 && (
+              <AnimateIn animation="animate-fade-in" delay="delay-3">
+                <div className="rounded-lg border border-border/40 bg-card/30 p-[20px]">
+                  <h3 className="mb-[12px] text-[13px] font-medium uppercase tracking-[0.06em] text-muted-foreground/60 flex items-center gap-[6px]">
+                    <FolderOpen className="h-[13px] w-[13px]" />
+                    分类
+                  </h3>
+                  <div className="space-y-[6px]">
+                    {categories.map((cat) => (
+                      <div key={cat.name} className="flex items-center justify-between py-[3px] px-[6px] rounded-md hover:bg-accent/20 transition-colors cursor-pointer group">
+                        <span className="text-[12px] text-muted-foreground group-hover:text-foreground transition-colors">{cat.name}</span>
+                        <span className="text-[10px] font-mono text-muted-foreground/30">{cat.count}</span>
+                      </div>
                     ))}
                   </div>
                 </div>

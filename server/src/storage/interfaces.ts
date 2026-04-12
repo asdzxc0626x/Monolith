@@ -22,6 +22,7 @@ export type Post = {
   publishAt: string | null;
   seriesSlug: string | null;
   seriesOrder: number;
+  category: string;
 };
 
 export type PostSummary = {
@@ -35,6 +36,7 @@ export type PostSummary = {
   pinned: boolean;
   publishAt: string | null;
   seriesSlug: string | null;
+  category: string;
 };
 
 export type Tag = {
@@ -74,6 +76,7 @@ export type CreatePostInput = {
   publishAt?: string | null;
   seriesSlug?: string | null;
   seriesOrder?: number;
+  category?: string;
 };
 
 export type UpdatePostInput = {
@@ -89,6 +92,7 @@ export type UpdatePostInput = {
   publishAt?: string | null;
   seriesSlug?: string | null;
   seriesOrder?: number;
+  category?: string;
 };
 
 export type UpsertPageInput = {
@@ -202,6 +206,9 @@ export interface IDatabase {
 
   /* 系列 */
   getSeriesPosts(seriesSlug: string): Promise<{ slug: string; title: string; seriesOrder: number }[]>;
+
+  /* 分类 */
+  getCategories(): Promise<{ name: string; count: number }[]>;
 
   /* 表情反应 */
   getReactions(postSlug: string): Promise<Record<string, number>>;

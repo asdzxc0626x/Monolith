@@ -117,6 +117,13 @@ app.get("/api/tags", async (c) => {
   return c.json(allTags);
 });
 
+// 获取所有分类
+app.get("/api/categories", async (c) => {
+  const db = c.get("db");
+  const categories = await db.getCategories();
+  return c.json(categories);
+});
+
 // 获取文章评论（仅已审核）
 app.get("/api/posts/:slug/comments", async (c) => {
   const slug = c.req.param("slug");

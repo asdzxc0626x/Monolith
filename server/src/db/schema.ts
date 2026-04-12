@@ -22,6 +22,7 @@ export const posts = sqliteTable("posts", {
   publishAt: text("publish_at"),
   seriesSlug: text("series_slug"),
   seriesOrder: integer("series_order").notNull().default(0),
+  category: text("category").default(""),
 });
 
 /* ── 标签表 ────────────────────────────────── */

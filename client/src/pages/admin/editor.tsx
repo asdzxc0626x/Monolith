@@ -120,6 +120,7 @@ export function AdminEditor() {
     publishAt: "",
     seriesSlug: "",
     seriesOrder: 0,
+    category: "",
   });
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ text: "", type: "" as "" | "success" | "error" });
@@ -148,6 +149,7 @@ export function AdminEditor() {
           publishAt: post.publishAt ? new Date(new Date(post.publishAt).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : "",
           seriesSlug: post.seriesSlug || "",
           seriesOrder: post.seriesOrder ?? 0,
+          category: post.category || "",
         });
         setAutoSlug(false);
       });
@@ -214,6 +216,7 @@ export function AdminEditor() {
         publishAt: form.publishAt ? new Date(form.publishAt).toISOString() : null,
         seriesSlug: form.seriesSlug || null,
         seriesOrder: form.seriesOrder,
+        category: form.category,
       };
 
       if (isEdit && params.slug) {
@@ -543,6 +546,15 @@ export function AdminEditor() {
                     onChange={(e) => updateField("seriesSlug", e.target.value)}
                     placeholder="如 react-tutorial"
                     className="h-[30px] w-full rounded-md border border-border/25 bg-background/20 px-[10px] text-[12px] text-foreground font-mono placeholder:text-muted-foreground/20 outline-none focus:border-foreground/15 transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="mb-[2px] block text-[10px] text-muted-foreground/35 uppercase tracking-wider">分类</label>
+                  <input
+                    value={form.category}
+                    onChange={(e) => updateField("category", e.target.value)}
+                    placeholder="如 前端、后端、DevOps"
+                    className="h-[30px] w-full rounded-md border border-border/25 bg-background/20 px-[10px] text-[12px] text-foreground placeholder:text-muted-foreground/20 outline-none focus:border-foreground/15 transition-colors"
                   />
                 </div>
               </div>
