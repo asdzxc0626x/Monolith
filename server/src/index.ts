@@ -20,6 +20,7 @@ type Bindings = {
   JWT_SECRET: string;
   DB_PROVIDER?: string;
   STORAGE_PROVIDER?: string;
+  WEBHOOK_URLS?: string; // 逗号分隔的 Webhook 目标地址
 };
 
 type Variables = {
@@ -57,6 +58,26 @@ app.use("*", async (c, next) => {
     c.res.headers.set("Cache-Control", "public, max-age=15, s-maxage=60, stale-while-revalidate=30");
   }
 });
+
+/* ── Webhook 通知辅助函数 ──────────────────────────── */
+async function triggerWebhook(c: any, eventName: string, payload: any) {
+  if (!c.env.WEBHOOK_URLS) return;
+  const urls = c.env.WEBHOOK_URLS.split(",").map((u: string) => u.trim()).filter(Boolean);
+  if (urls.length === 0) return;
+
+  const data = JSON.stringify({ event: eventName, timestamp: new Date().toISOString(), payload });
+  
+  const promises = urls.map((url: string) => 
+    fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: data })
+      .catch(err => console.error("Webhook notification failed for", url, err))
+  );
+
+  if (c.executionCtx && c.executionCtx.waitUntil) {
+    c.executionCtx.waitUntil(Promise.allSettled(promises));
+  } else {
+    Promise.allSettled(promises);
+  }
+}
 
 /* ── 健康检查端点 ──────────────────────────── */
 app.get("/api/health", async (c) => {
@@ -509,6 +530,7 @@ app.post("/api/admin/posts", async (c) => {
   const body = await c.req.json();
   const db = c.get("db");
   const newPost = await db.createPost(body);
+  await triggerWebhook(c, "post_created", newPost);
   return c.json(newPost, 201);
 });
 
@@ -523,6 +545,7 @@ app.put("/api/admin/posts/:slug", async (c) => {
   if (body.saveVersion) {
     await db.createPostVersion(slug);
   }
+  await triggerWebhook(c, "post_updated", updated);
   return c.json(updated);
 });
 
@@ -554,6 +577,7 @@ app.post("/api/admin/posts/batch", async (c) => {
   }
   const db = c.get("db");
   const count = await db.batchOperatePosts(slugs, action);
+  await triggerWebhook(c, "post_batch_operated", { action, slugs, count });
   return c.json({ success: true, count, message: `成功处理 ${count} 篇文章` });
 });
 
@@ -563,6 +587,7 @@ app.delete("/api/admin/posts/:slug", async (c) => {
   const db = c.get("db");
   const deleted = await db.deletePost(slug);
   if (!deleted) return c.json({ error: "文章未找到" }, 404);
+  await triggerWebhook(c, "post_deleted", { slug });
   return c.json({ success: true });
 });
 
