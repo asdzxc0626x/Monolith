@@ -198,11 +198,43 @@ renderer.image = ({ href, title, text }: { href: string; title?: string | null; 
   return `<figure class="md-figure"><img src="${href}" alt="${escapeHtml(text)}" loading="lazy" decoding="async" data-lazy-img${titleAttr} class="lazy-img"/>${text ? `<figcaption>${escapeHtml(text)}</figcaption>` : ""}</figure>`;
 };
 
-// 表格：响应式包裹
-renderer.table = (token: any) => {
-  const header = token.header || '';
-  const body = token.body || token.rows || '';
-  return `<div class="table-wrapper"><table><thead>${header}</thead><tbody>${body}</tbody></table></div>`;
+// 表格：响应式包裹（兼容 marked v15+ 的 token 结构）
+renderer.table = function (token: any) {
+  // marked v15+ 传入的是 token 对象，header 和 rows 是嵌套 Token 数组
+  // 需要手动构建 HTML 表格
+  let headerHtml = "";
+  let bodyHtml = "";
+
+  // 处理表头
+  if (token.header && Array.isArray(token.header)) {
+    headerHtml = "<tr>" + token.header.map((cell: any) => {
+      const align = cell.align ? ` style="text-align:${cell.align}"` : "";
+      const cellText = cell.tokens
+        ? this.parser.parseInline(cell.tokens)
+        : (typeof cell.text === "string" ? cell.text : String(cell));
+      return `<th${align}>${cellText}</th>`;
+    }).join("") + "</tr>";
+  } else if (typeof token.header === "string") {
+    headerHtml = token.header;
+  }
+
+  // 处理表体
+  if (token.rows && Array.isArray(token.rows)) {
+    bodyHtml = token.rows.map((row: any) => {
+      if (!Array.isArray(row)) return typeof row === "string" ? row : "";
+      return "<tr>" + row.map((cell: any) => {
+        const align = cell.align ? ` style="text-align:${cell.align}"` : "";
+        const cellText = cell.tokens
+          ? this.parser.parseInline(cell.tokens)
+          : (typeof cell.text === "string" ? cell.text : String(cell));
+        return `<td${align}>${cellText}</td>`;
+      }).join("") + "</tr>";
+    }).join("");
+  } else if (typeof token.body === "string") {
+    bodyHtml = token.body;
+  }
+
+  return `<div class="table-wrapper"><table><thead>${headerHtml}</thead><tbody>${bodyHtml}</tbody></table></div>`;
 };
 
 // 链接：外部链接自动 target="_blank"
