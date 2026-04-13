@@ -17,7 +17,15 @@ updates:
       - "frontend"
     commit-message:
       prefix: "chore(deps)"
-    # 忽略主要版本升级（手动处理）
+    # 将前端的只读小版本(minor)与修订版(patch)打包到一个 PR，避免满屏 PR 的困扰
+    groups:
+      client-minor-patch-updates:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    # 忽略主要版本升级（重大升级由主人来指定时间手动处理）
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
@@ -36,16 +44,31 @@ updates:
       - "backend"
     commit-message:
       prefix: "chore(deps)"
+    # 后端同样开启打包合并更新策略
+    groups:
+      server-minor-patch-updates:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
 
-  # GitHub Actions（如果未来添加 CI/CD）
+  # GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Shanghai"
     labels:
       - "dependencies"
     commit-message:
       prefix: "chore(ci)"
+    groups:
+      actions-updates:
+        patterns:
+          - "*"

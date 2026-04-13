@@ -1,0 +1,35 @@
+name: Dependabot Auto-Merge
+
+# 在 Dependabot 发起 PR 时触发
+on: pull_request
+
+# 给予 GitHub Actions 机器人对 PR 和代码内容的写入与审批权限
+permissions:
+  pull-requests: write
+  contents: write
+
+jobs:
+  dependabot:
+    runs-on: ubuntu-latest
+    # 这一行是安全阀，确保这个无脑合并的工作流只对官方的 Dependabot 机器人生效
+    if: github.actor == 'dependabot[bot]'
+    steps:
+      - name: Fetch Dependabot metadata
+        id: dependabot-metadata
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+      
+      - name: Auto-Approve the PR
+        run: gh pr review --approve "$PR_URL"
+        env:
+          PR_URL: ${{github.event.pull_request.html_url}}
+          GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+
+      - name: Enable Auto-Merge (Squash)
+        # 只要 CI（比如 ESLint 等构建步骤）由于通过了校验变成绿灯
+        # 就会立刻执行 Squash 合并
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{github.event.pull_request.html_url}}
+          GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
