@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { checkAuth, getToken } from "@/lib/api";
-import { ArrowLeft, Save, Globe, User, Link2, Rss, ToggleLeft, ToggleRight, Code } from "lucide-react";
-import { Link } from "wouter";
+import { ArrowLeft, Save, Globe, User, Link2, ToggleLeft, ToggleRight, Code, HardDrive, Download, Rss } from "lucide-react";
 
 type Settings = {
   site_title: string;
@@ -38,12 +37,22 @@ const defaultSettings: Settings = {
   custom_footer: "",
 };
 
+type TabId = "general" | "profile" | "social" | "advanced" | "data";
+const TABS = [
+  { id: "general", label: "常规设置", icon: Globe },
+  { id: "profile", label: "个人资料", icon: User },
+  { id: "social", label: "社交与订阅", icon: Link2 },
+  { id: "advanced", label: "扩展与注入", icon: Code },
+  { id: "data", label: "数据管理", icon: HardDrive },
+];
+
 export function AdminSettings() {
   const [, setLocation] = useLocation();
   const [settings, setSettings] = useState<Settings>(defaultSettings);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ text: "", type: "" as "" | "success" | "error" });
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<TabId>("general");
 
   useEffect(() => {
     document.title = "站点设置 | Monolith";
@@ -100,187 +109,231 @@ export function AdminSettings() {
   if (loading) return <div className="py-[60px] text-center text-muted-foreground/40">加载中...</div>;
 
   return (
-    <div className="mx-auto w-full max-w-[720px] py-[32px]">
+    <div className="mx-auto w-full max-w-[960px] py-[24px] sm:py-[36px] px-[16px] sm:px-[20px]">
       {/* 顶栏 */}
       <div className="mb-[28px] flex items-center justify-between">
         <div className="flex items-center gap-[16px]">
-          <Link href="/admin" className="inline-flex items-center gap-[5px] text-[13px] text-muted-foreground/50 hover:text-foreground transition-colors">
-            <ArrowLeft className="h-[13px] w-[13px]" />返回
+          <Link href="/admin" className="inline-flex items-center justify-center w-[34px] h-[34px] rounded-lg border border-border/20 text-muted-foreground/50 hover:text-foreground hover:bg-card/40 transition-all">
+            <ArrowLeft className="h-[14px] w-[14px]" />
           </Link>
-          <h1 className="text-[22px] font-semibold tracking-[-0.02em]">站点设置</h1>
+          <h1 className="text-[22px] sm:text-[28px] font-semibold tracking-[-0.02em]">站点设置</h1>
         </div>
-        <div className="flex items-center gap-[8px]">
+        <div className="flex items-center gap-[12px]">
           {message.text && (
-            <span className={`text-[12px] px-[10px] py-[3px] rounded-md animate-fade-in ${
-              message.type === "success" ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"
+            <span className={`text-[12px] px-[12px] py-[6px] rounded-md animate-fade-in ${
+              message.type === "success" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-red-500/10 text-red-400 border border-red-500/20"
             }`}>
-              {message.type === "success" ? "✓" : "✕"} {message.text}
+              {message.type === "success" ? "已保存 ✓" : "失败 ✕"}
             </span>
           )}
-          <button onClick={handleSave} disabled={saving} className="inline-flex items-center gap-[4px] h-[32px] px-[14px] rounded-md bg-foreground text-background text-[12px] font-medium hover:opacity-90 disabled:opacity-50 transition-opacity">
-            <Save className="h-[11px] w-[11px]" />{saving ? "保存中..." : "保存设置"}
+          <button onClick={handleSave} disabled={saving} className="inline-flex items-center gap-[6px] h-[36px] px-[16px] rounded-lg bg-foreground text-background text-[13px] font-medium hover:opacity-90 disabled:opacity-50 transition-opacity">
+            <Save className="h-[14px] w-[14px]" />{saving ? "保存中..." : "保存更改"}
           </button>
         </div>
       </div>
 
-      {/* 站点信息 */}
-      <section className="mb-[24px]">
-        <SectionHeader icon={Globe} title="站点信息" />
-        <div className="rounded-lg border border-border/25 bg-card/15 p-[20px] space-y-[14px]">
-          <SettingField label="站点标题" value={settings.site_title} onChange={(v) => updateSetting("site_title", v)} placeholder="Monolith" />
-          <SettingField label="站点描述" value={settings.site_description} onChange={(v) => updateSetting("site_description", v)} placeholder="一句话描述你的博客" />
-          <SettingField label="首页标语" value={settings.site_tagline} onChange={(v) => updateSetting("site_tagline", v)} placeholder="显示在首页 Hero 区域" />
-          <SettingField label="页脚文本" value={settings.footer_text} onChange={(v) => updateSetting("footer_text", v)} placeholder="© 2026 ..."  />
-        </div>
-      </section>
-
-      {/* 作者信息 */}
-      <section className="mb-[24px]">
-        <SectionHeader icon={User} title="博主名片" />
-        <div className="rounded-lg border border-border/25 bg-card/15 p-[20px] space-y-[14px]">
-          {/* 头像预览 + URL 输入 */}
-          <div>
-            <label className="mb-[4px] block text-[11px] text-muted-foreground/40 uppercase tracking-wider">头像</label>
-            <div className="flex items-center gap-[14px]">
-              <div className="relative flex-shrink-0">
-                {settings.author_avatar ? (
-                  <img
-                    src={settings.author_avatar}
-                    alt="头像预览"
-                    className="h-[56px] w-[56px] rounded-full object-cover border-2 border-border/30"
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                  />
-                ) : (
-                  <div className="flex h-[56px] w-[56px] items-center justify-center rounded-full bg-gradient-to-br from-blue-500/30 to-cyan-500/30 text-[20px] font-semibold text-foreground border-2 border-border/30">
-                    {(settings.author_name || 'M').charAt(0).toUpperCase()}
-                  </div>
-                )}
-              </div>
-              <div className="flex-1">
-                <input
-                  value={settings.author_avatar}
-                  onChange={(e) => updateSetting("author_avatar", e.target.value)}
-                  placeholder="输入头像图片 URL，留空则显示名称首字母"
-                  className="w-full rounded-md border border-border/25 bg-background/20 px-[12px] h-[34px] text-[13px] text-foreground placeholder:text-muted-foreground/20 outline-none focus:border-foreground/15 transition-colors"
-                />
-                <p className="text-[10px] text-muted-foreground/25 mt-[4px]">💡 支持任意图片链接，也可上传到媒体库后粘贴地址</p>
-              </div>
-            </div>
-          </div>
-          <SettingField label="显示名称" value={settings.author_name} onChange={(v) => updateSetting("author_name", v)} placeholder="你的名字" />
-          <SettingField label="身份头衔" value={settings.author_title} onChange={(v) => updateSetting("author_title", v)} placeholder="独立开发者 / 全栈工程师 / ..." />
-          <SettingField label="个人简介" value={settings.author_bio} onChange={(v) => updateSetting("author_bio", v)} placeholder="一段简短的自我介绍" multiline />
-        </div>
-      </section>
-
-      {/* 社交链接 */}
-      <section className="mb-[24px]">
-        <SectionHeader icon={Link2} title="社交链接" />
-        <div className="rounded-lg border border-border/25 bg-card/15 p-[20px] space-y-[14px]">
-          <SettingField label="GitHub" value={settings.github_url} onChange={(v) => updateSetting("github_url", v)} placeholder="https://github.com/username" />
-          <SettingField label="X / Twitter" value={settings.twitter_url} onChange={(v) => updateSetting("twitter_url", v)} placeholder="https://x.com/username" />
-          <SettingField label="邮箱" value={settings.email} onChange={(v) => updateSetting("email", v)} placeholder="you@example.com" />
-          <p className="text-[10px] text-muted-foreground/25 pt-[4px]">💡 填入链接后会显示在首页侧边栏的博主名片中。留空则不显示。</p>
-        </div>
-      </section>
-
-      {/* RSS 设置 */}
-      <section className="mb-[24px]">
-        <SectionHeader icon={Rss} title="RSS 订阅" />
-        <div className="rounded-lg border border-border/25 bg-card/15 p-[20px]">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[14px] text-foreground">RSS Feed</p>
-              <p className="text-[12px] text-muted-foreground/40 mt-[2px]">
-                {rssEnabled ? "已开启 — " : "已关闭 — "}
-                <span className="text-muted-foreground/25">
-                  {rssEnabled ? "访问 /rss.xml 可获取标准 RSS 2.0 订阅源" : "RSS 链接将从页脚隐藏"}
-                </span>
-              </p>
-            </div>
-            <button onClick={() => updateSetting("rss_enabled", rssEnabled ? "false" : "true")}
-              className="inline-flex items-center gap-[4px] transition-colors"
+      <div className="flex flex-col md:flex-row gap-[24px] lg:gap-[36px]">
+        {/* 左侧边栏导航 */}
+        <div className="w-full md:w-[220px] shrink-0 flex md:flex-col gap-[4px] overflow-x-auto md:overflow-visible pb-[8px] md:pb-0 scrollbar-hide">
+          {TABS.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as TabId)}
+              className={`flex-shrink-0 w-auto md:w-full flex items-center gap-[10px] px-[14px] py-[10px] md:py-[12px] rounded-lg text-[13px] md:text-[14px] transition-all whitespace-nowrap ${
+                activeTab === tab.id 
+                  ? "bg-card border border-border/15 text-foreground font-medium shadow-sm" 
+                  : "text-muted-foreground/60 hover:text-foreground/85 hover:bg-card/40 border border-transparent"
+              }`}
             >
-              {rssEnabled ? (
-                <ToggleRight className="h-[28px] w-[28px] text-emerald-400" />
-              ) : (
-                <ToggleLeft className="h-[28px] w-[28px] text-muted-foreground/30" />
-              )}
+              <tab.icon className={`h-[15px] w-[15px] ${activeTab === tab.id ? "text-cyan-400" : "opacity-60"}`} />
+              {tab.label}
             </button>
-          </div>
-          {rssEnabled && (
-            <div className="mt-[12px] rounded-md bg-background/20 px-[12px] py-[8px]">
-              <p className="text-[11px] text-muted-foreground/30 font-mono">
-                {typeof window !== "undefined" ? window.location.origin : ""}/rss.xml
-              </p>
+          ))}
+        </div>
+
+        {/* 右侧面板主体内容 */}
+        <div className="flex-1 min-w-0">
+          
+          {/* TAB: 常规设置 */}
+          {activeTab === "general" && (
+            <div className="space-y-[24px] animate-fade-in">
+              <div>
+                <h2 className="text-[16px] font-semibold mb-[4px]">常规设置</h2>
+                <p className="text-[12px] text-muted-foreground/50 mb-[16px]">管理站点的基础身份信息与大纲结构。</p>
+                <div className="rounded-xl border border-border/15 bg-card/5 p-[20px] sm:p-[24px] space-y-[18px]">
+                  <SettingField label="站点标题" value={settings.site_title} onChange={(v) => updateSetting("site_title", v)} placeholder="Monolith" />
+                  <SettingField label="站点描述" value={settings.site_description} onChange={(v) => updateSetting("site_description", v)} placeholder="一句话描述你的博客（用于 SEO Meta）" />
+                  <SettingField label="首页标语 (Tagline)" value={settings.site_tagline} onChange={(v) => updateSetting("site_tagline", v)} placeholder="显示在首页 Hero 区域的引言" />
+                  <SettingField label="页脚文本" value={settings.footer_text} onChange={(v) => updateSetting("footer_text", v)} placeholder="© 2026 ..."  />
+                </div>
+              </div>
             </div>
           )}
-        </div>
-      </section>
 
-      {/* 自定义代码注入 */}
-      <section>
-        <SectionHeader icon={Code} title="自定义代码" />
-        <div className="rounded-lg border border-border/25 bg-card/15 p-[20px] space-y-[16px]">
-          <div>
-            <label className="mb-[4px] block text-[11px] text-muted-foreground/40 uppercase tracking-wider">HEAD 注入代码</label>
-            <p className="text-[10px] text-muted-foreground/25 mb-[6px]">注入到 &lt;head&gt; 标签内，适用于统计代码、SEO 验证、自定义样式等</p>
-            <textarea
-              value={settings.custom_header}
-              onChange={(e) => setSettings({ ...settings, custom_header: e.target.value })}
-              placeholder="<!-- 例如 Google Analytics 或 AdSense 代码 -->"
-              rows={4}
-              className="w-full rounded-md border border-border/25 bg-background/20 px-[12px] py-[8px] text-[12px] text-foreground font-mono placeholder:text-muted-foreground/20 outline-none focus:border-foreground/15 transition-colors resize-none leading-[1.7]"
-            />
-          </div>
-          <div>
-            <label className="mb-[4px] block text-[11px] text-muted-foreground/40 uppercase tracking-wider">FOOTER 注入代码</label>
-            <p className="text-[10px] text-muted-foreground/25 mb-[6px]">注入到 &lt;/body&gt; 之前，适用于广告代码、客服脚本等</p>
-            <textarea
-              value={settings.custom_footer}
-              onChange={(e) => setSettings({ ...settings, custom_footer: e.target.value })}
-              placeholder="<!-- 例如广告联盟代码或客服聊天脚本 -->"
-              rows={4}
-              className="w-full rounded-md border border-border/25 bg-background/20 px-[12px] py-[8px] text-[12px] text-foreground font-mono placeholder:text-muted-foreground/20 outline-none focus:border-foreground/15 transition-colors resize-none leading-[1.7]"
-            />
-          </div>
-          <p className="text-[10px] text-amber-400/50">⚠ 请确保注入的代码来源可信，错误的脚本可能影响页面加载或安全性</p>
-        </div>
-      </section>
-
-      {/* 数据管理 */}
-      <section>
-        <SectionHeader icon={Globe} title="数据管理" />
-        <div className="rounded-lg border border-border/25 bg-card/15 p-[20px]">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[14px] text-foreground">导出所有文章</p>
-              <p className="text-[12px] text-muted-foreground/40 mt-[2px]">以 JSON 格式下载所有文章数据</p>
+          {/* TAB: 个人资料 */}
+          {activeTab === "profile" && (
+            <div className="space-y-[24px] animate-fade-in">
+              <div>
+                <h2 className="text-[16px] font-semibold mb-[4px]">个人资料</h2>
+                <p className="text-[12px] text-muted-foreground/50 mb-[16px]">维护博主名片栏目，向访客展示个人特写。</p>
+                <div className="rounded-xl border border-border/15 bg-card/5 p-[20px] sm:p-[24px] space-y-[18px]">
+                  <div>
+                    <label className="mb-[6px] block text-[11px] font-medium text-muted-foreground/40 uppercase tracking-wider">头像</label>
+                    <div className="flex items-start sm:items-center gap-[16px] flex-col sm:flex-row">
+                      <div className="relative shrink-0">
+                        {settings.author_avatar ? (
+                          <img
+                            src={settings.author_avatar}
+                            alt="头像预览"
+                            className="h-[64px] w-[64px] rounded-full object-cover border-[3px] border-card shadow-sm"
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                          />
+                        ) : (
+                          <div className="flex h-[64px] w-[64px] items-center justify-center rounded-full bg-gradient-to-br from-blue-500/20 to-cyan-500/20 text-[24px] font-bold text-cyan-400 border-[3px] border-card shadow-sm">
+                            {(settings.author_name || 'M').charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 w-full">
+                        <input
+                          value={settings.author_avatar}
+                          onChange={(e) => updateSetting("author_avatar", e.target.value)}
+                          placeholder="输入头像图片 URL，留空则显示简称"
+                          className="w-full rounded-lg border border-border/20 bg-background/30 px-[14px] h-[38px] text-[13px] text-foreground placeholder:text-muted-foreground/20 outline-none focus:border-foreground/30 focus:bg-background/50 transition-all font-mono"
+                        />
+                        <p className="text-[11px] text-muted-foreground/30 mt-[6px]">将图片上传至媒体库后粘贴其 URL 地址。</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-[16px]">
+                    <SettingField label="显示名称" value={settings.author_name} onChange={(v) => updateSetting("author_name", v)} placeholder="你的名字" />
+                    <SettingField label="身份头衔" value={settings.author_title} onChange={(v) => updateSetting("author_title", v)} placeholder="例如：全栈工程师" />
+                  </div>
+                  <SettingField label="个人简介" value={settings.author_bio} onChange={(v) => updateSetting("author_bio", v)} placeholder="一段简短的自我介绍" multiline />
+                </div>
+              </div>
             </div>
-            <button onClick={async () => {
-              const res = await fetch("/api/admin/posts", { headers: { Authorization: `Bearer ${getToken()}` } });
-              const p = await res.json();
-              const blob = new Blob([JSON.stringify(p, null, 2)], { type: "application/json" });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url; a.download = `monolith-export-${new Date().toISOString().slice(0, 10)}.json`; a.click();
-              URL.revokeObjectURL(url);
-              showMsg("导出完成", "success");
-            }} className="h-[32px] px-[14px] rounded-md border border-border/30 text-[12px] text-muted-foreground hover:text-foreground hover:border-border/50 transition-colors">
-              导出 JSON
-            </button>
-          </div>
-        </div>
-      </section>
-    </div>
-  );
-}
+          )}
 
-function SectionHeader({ icon: Icon, title }: { icon: React.ElementType; title: string }) {
-  return (
-    <div className="flex items-center gap-[8px] mb-[14px]">
-      <Icon className="h-[15px] w-[15px] text-muted-foreground/40" />
-      <h2 className="text-[14px] font-medium text-muted-foreground/60 uppercase tracking-[0.06em]">{title}</h2>
+          {/* TAB: 社交与订阅 */}
+          {activeTab === "social" && (
+            <div className="space-y-[24px] animate-fade-in">
+              <div>
+                <h2 className="text-[16px] font-semibold mb-[4px]">社交网络</h2>
+                <p className="text-[12px] text-muted-foreground/50 mb-[16px]">提供连接外部平台与流量留存的入口。</p>
+                <div className="rounded-xl border border-border/15 bg-card/5 p-[20px] sm:p-[24px] space-y-[18px]">
+                  <SettingField label="GitHub" value={settings.github_url} onChange={(v) => updateSetting("github_url", v)} placeholder="https://github.com/username" />
+                  <SettingField label="X / Twitter" value={settings.twitter_url} onChange={(v) => updateSetting("twitter_url", v)} placeholder="https://x.com/username" />
+                  <SettingField label="联系邮箱" value={settings.email} onChange={(v) => updateSetting("email", v)} placeholder="you@example.com" />
+                  <div className="mt-[8px] flex items-center gap-[6px] text-[11px] text-muted-foreground/30">
+                    <div className="h-[12px] w-[2px] bg-cyan-400/50 rounded-full" />
+                    填入有效链接后将自动在首页侧边卡片中展示对应图标。
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h2 className="text-[16px] font-semibold mb-[4px]">RSS 订阅流</h2>
+                <div className="rounded-xl border border-border/15 bg-card/5 p-[20px] sm:p-[24px]">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[14px] font-medium text-foreground flex items-center gap-[6px]">
+                        <Rss className="h-[14px] w-[14px] text-orange-400" /> RSS Feed 源
+                      </p>
+                      <p className="text-[12px] text-muted-foreground/40 mt-[4px]">
+                        {rssEnabled ? "开启状态，访客可订阅最新发布的文章" : "已隐藏，页脚不再展示订阅入口"}
+                      </p>
+                    </div>
+                    <button onClick={() => updateSetting("rss_enabled", rssEnabled ? "false" : "true")}
+                      className="inline-flex items-center transition-opacity hover:opacity-80"
+                    >
+                      {rssEnabled ? (
+                        <ToggleRight className="h-[32px] w-[32px] text-emerald-400" />
+                      ) : (
+                        <ToggleLeft className="h-[32px] w-[32px] text-muted-foreground/20" />
+                      )}
+                    </button>
+                  </div>
+                  {rssEnabled && (
+                    <div className="mt-[16px] rounded-lg border border-border/10 bg-background/20 px-[14px] py-[10px] flex justify-between items-center">
+                      <span className="text-[12px] text-muted-foreground/50 font-mono tracking-tight">
+                        {typeof window !== "undefined" ? window.location.origin : ""}/rss.xml
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: 扩展与注入 */}
+          {activeTab === "advanced" && (
+            <div className="space-y-[24px] animate-fade-in">
+              <div>
+                <h2 className="text-[16px] font-semibold mb-[4px] flex items-center gap-[6px]">
+                  危险操作区 <span className="text-[10px] px-[6px] py-[2px] rounded-md bg-amber-500/10 text-amber-500 border border-amber-500/20 font-mono">Expert</span>
+                </h2>
+                <p className="text-[12px] text-muted-foreground/50 mb-[16px]">向站点核心区域注入自定义脚本或标签。错误的语法可能导致前端崩溃。</p>
+                <div className="rounded-xl border border-border/15 bg-card/5 p-[20px] sm:p-[24px] space-y-[20px]">
+                  <div>
+                    <label className="mb-[6px] block text-[11px] font-bold text-amber-500/70 uppercase tracking-wider">&lt;head&gt; 注入区域</label>
+                    <p className="text-[11px] text-muted-foreground/30 mb-[10px]">适用于统计服务 (Analytics)、搜索引擎持有权验证 (SEO 元标签) 以及全局 CSS 覆盖。</p>
+                    <textarea
+                      value={settings.custom_header}
+                      onChange={(e) => setSettings({ ...settings, custom_header: e.target.value })}
+                      placeholder={"<!-- Google tag (gtag.js) -->\n<script async src=\"...\"></script>"}
+                      rows={5}
+                      className="w-full rounded-lg border border-border/20 bg-black/20 px-[16px] py-[12px] text-[12px] text-emerald-400/80 font-mono placeholder:text-muted-foreground/15 outline-none focus:border-amber-500/30 focus:ring-1 focus:ring-amber-500/20 transition-all resize-y leading-[1.6]"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-[6px] block text-[11px] font-bold text-amber-500/70 uppercase tracking-wider">&lt;/body&gt; 前方注入</label>
+                    <p className="text-[11px] text-muted-foreground/30 mb-[10px]">位于文档末尾，主要用于非阻塞广告联盟脚本、客服悬浮窗或第三方交互集成。</p>
+                    <textarea
+                      value={settings.custom_footer}
+                      onChange={(e) => setSettings({ ...settings, custom_footer: e.target.value })}
+                      placeholder={"<script>\n  console.log('Hello from footer!');\n</script>"}
+                      rows={5}
+                      className="w-full rounded-lg border border-border/20 bg-black/20 px-[16px] py-[12px] text-[12px] text-amber-400/80 font-mono placeholder:text-muted-foreground/15 outline-none focus:border-amber-500/30 focus:ring-1 focus:ring-amber-500/20 transition-all resize-y leading-[1.6]"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: 数据管理 */}
+          {activeTab === "data" && (
+            <div className="space-y-[24px] animate-fade-in">
+              <div>
+                <h2 className="text-[16px] font-semibold mb-[4px]">导入与导出</h2>
+                <p className="text-[12px] text-muted-foreground/50 mb-[16px]">管理站点的核心数据集。对于完整的文件系统备份，请前往「备份」界面。</p>
+                <div className="rounded-xl border border-border/15 bg-card/5 p-[20px] sm:p-[24px]">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-[16px]">
+                    <div>
+                      <p className="text-[14px] font-medium text-foreground">文章元数据快照</p>
+                      <p className="text-[12px] text-muted-foreground/40 mt-[4px]">导出所有的文章内容及其配置属性为单份 JSON，方便迁移与分析。</p>
+                    </div>
+                    <button onClick={async () => {
+                      const res = await fetch("/api/admin/posts", { headers: { Authorization: `Bearer ${getToken()}` } });
+                      const p = await res.json();
+                      const blob = new Blob([JSON.stringify(p, null, 2)], { type: "application/json" });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url; a.download = `monolith-export-${new Date().toISOString().slice(0, 10)}.json`; a.click();
+                      URL.revokeObjectURL(url);
+                      showMsg("导出完成", "success");
+                    }} className="shrink-0 flex items-center gap-[6px] h-[34px] px-[14px] rounded-lg border border-border/25 bg-background shadow-sm text-[12px] text-foreground hover:bg-card/80 hover:border-border/40 transition-all">
+                      <Download className="h-[12px] w-[12px]" /> 导出为 JSON
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+        </div>
+      </div>
     </div>
   );
 }
@@ -288,16 +341,17 @@ function SectionHeader({ icon: Icon, title }: { icon: React.ElementType; title: 
 function SettingField({ label, value, onChange, placeholder, multiline }: {
   label: string; value: string; onChange: (v: string) => void; placeholder?: string; multiline?: boolean;
 }) {
-  const inputClass = "w-full rounded-md border border-border/25 bg-background/20 px-[12px] text-[13px] text-foreground placeholder:text-muted-foreground/20 outline-none focus:border-foreground/15 transition-colors";
+  const inputClass = "w-full rounded-lg border border-border/20 bg-background/30 px-[14px] text-[13px] text-foreground placeholder:text-muted-foreground/20 outline-none focus:border-foreground/30 focus:bg-background/50 transition-all";
 
   return (
     <div>
-      <label className="mb-[4px] block text-[11px] text-muted-foreground/40 uppercase tracking-wider">{label}</label>
+      <label className="mb-[6px] block text-[11px] font-medium text-muted-foreground/40 uppercase tracking-wider">{label}</label>
       {multiline ? (
-        <textarea value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} rows={3} className={`${inputClass} py-[8px] resize-none leading-[1.7]`} />
+        <textarea value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} rows={4} className={`${inputClass} py-[10px] resize-y leading-[1.6]`} />
       ) : (
-        <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className={`${inputClass} h-[34px]`} />
+        <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className={`${inputClass} h-[38px]`} />
       )}
     </div>
   );
 }
+

@@ -760,13 +760,6 @@ export function AdminEditor() {
                   <ArrowDownUp className="h-[11px] w-[11px]" />
                   {syncScroll ? "同步" : "独立"}
                 </button>
-                <button
-                  onClick={() => setShowPreview(false)}
-                  title="关闭预览面板"
-                  className="h-[24px] px-[6px] rounded-[4px] inline-flex items-center text-muted-foreground/30 hover:text-foreground hover:bg-accent/15 transition-colors"
-                >
-                  <PanelRightClose className="h-[12px] w-[12px]" />
-                </button>
               </div>
             </div>
             <div ref={previewRef} className="flex-1 min-h-0 overflow-y-auto p-[24px]">
