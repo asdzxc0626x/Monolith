@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useLocation, Link } from "wouter";
-import { checkAuth, getToken } from "@/lib/api";
+import { getToken } from "@/lib/api";
 import { Save, Globe, User, Link2, ToggleLeft, ToggleRight, Code, HardDrive, Download, Rss } from "lucide-react";
 
 type Settings = {
@@ -55,11 +55,8 @@ export function AdminSettings() {
 
   useEffect(() => {
     document.title = "站点设置 | Monolith";
-    checkAuth().then((ok) => {
-      if (!ok) { setLocation("/admin/login"); return; }
-      fetchSettings();
-    });
-  }, [setLocation]);
+    fetchSettings();
+  }, []);
 
   const fetchSettings = async () => {
     try {

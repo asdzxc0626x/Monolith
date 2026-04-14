@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useLocation } from "wouter";
-import { checkAuth, getToken } from "@/lib/api";
+import { getToken } from "@/lib/api";
 import { HardDrive, Cloud, Globe, Download, Trash2, RefreshCw, Shield, Clock, Upload, Eye, FileUp, ChevronDown, ChevronUp, Database, AlertTriangle } from "lucide-react";
 import { platforms, type ImportResult, type PlatformInfo } from "@/lib/importers";
 import { Link } from "wouter";

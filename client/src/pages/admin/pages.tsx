@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
-import { checkAuth, getToken } from "@/lib/api";
+import { getToken } from "@/lib/api";
 import { Plus, Edit, Trash2, Eye, EyeOff, GripVertical, FileText, Navigation, Save } from "lucide-react";
 import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
@@ -25,11 +25,8 @@ export function AdminPages() {
 
   useEffect(() => {
     document.title = "独立页管理 | Monolith";
-    checkAuth().then((ok) => {
-      if (!ok) { setLocation("/admin/login"); return; }
-      loadPages();
-    });
-  }, [setLocation]);
+    loadPages();
+  }, []);
 
   const showMsg = useCallback((text: string, type: "success" | "error") => {
     setMessage({ text, type });

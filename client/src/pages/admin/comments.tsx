@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import {
-  checkAuth, fetchAdminComments, approveComment, deleteComment,
+  fetchAdminComments, approveComment, deleteComment,
   type AdminComment,
 } from "@/lib/api";
 import {
@@ -28,11 +28,8 @@ export function AdminComments() {
 
   useEffect(() => {
     document.title = "评论管理 | Monolith";
-    checkAuth().then((ok) => {
-      if (!ok) { setLocation("/admin/login"); return; }
-      fetchAdminComments().then(setComments).finally(() => setLoading(false));
-    });
-  }, [setLocation]);
+    fetchAdminComments().then(setComments).finally(() => setLoading(false));
+  }, []);
 
   const handleApprove = async (id: number) => {
     setProcessing(id);

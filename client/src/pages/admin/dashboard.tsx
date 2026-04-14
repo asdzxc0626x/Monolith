@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link, useLocation } from "wouter";
-import { checkAuth, clearToken, fetchAdminPosts, deletePost, batchOperatePosts, fetchViewStats, type Post, type ViewStats } from "@/lib/api";
+import { clearToken, fetchAdminPosts, deletePost, batchOperatePosts, fetchViewStats, type Post, type ViewStats } from "@/lib/api";
 import { Plus, Edit, Trash2, Eye, FileText, Clock, Search, ExternalLink, Globe, CheckCircle2, AlertTriangle, XCircle, CheckSquare, Square, EyeOff, TrendingUp, ArrowRight, BarChart3 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
@@ -30,12 +30,9 @@ export function AdminDashboard() {
 
   useEffect(() => {
     document.title = "管理后台 | Monolith";
-    checkAuth().then((ok) => {
-      if (!ok) { setLocation("/admin/login"); return; }
-      fetchAdminPosts().then(setPosts).finally(() => setLoading(false));
-      fetchViewStats().then(setViewStats).catch(() => {});
-    });
-  }, [setLocation]);
+    fetchAdminPosts().then(setPosts).finally(() => setLoading(false));
+    fetchViewStats().then(setViewStats).catch(() => {});
+  }, []);
 
   const handleDelete = async (slug: string, title: string) => {
     if (!confirm(`确定删除「${title}」？此操作不可撤销。`)) return;

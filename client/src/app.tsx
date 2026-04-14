@@ -101,17 +101,17 @@ export function App() {
 
       {/* ======== 2. 后台全屏编辑器区 ======== */}
       {isEditorPage && (
-        <main className="mx-auto w-full px-[16px] flex-1 flex flex-col">
-          <Suspense fallback={<div className="p-8 flex justify-center text-zinc-500">Loading...</div>}>
-            <Switch>
-              <Route path="/admin/editor/:slug?">
-                <ProtectedRoute>
+        <ProtectedRoute>
+          <main className="mx-auto w-full px-[16px] flex-1 flex flex-col">
+            <Suspense fallback={<div className="p-8 flex justify-center text-zinc-500">Loading...</div>}>
+              <Switch>
+                <Route path="/admin/editor/:slug?">
                   <AdminEditor />
-                </ProtectedRoute>
-              </Route>
-            </Switch>
-          </Suspense>
-        </main>
+                </Route>
+              </Switch>
+            </Suspense>
+          </main>
+        </ProtectedRoute>
       )}
 
       {/* ======== 3. 后台登录页 (无外壳独立渲染) ======== */}
@@ -127,36 +127,22 @@ export function App() {
 
       {/* ======== 4. 核心管理后台区 (Admin App Shell) ======== */}
       {isAdminArea && (
-        <AdminLayout>
-          <Suspense fallback={<div className="p-8 flex justify-center text-zinc-500">Loading...</div>}>
-            <Switch>
-              <Route path="/admin/settings">
-                <ProtectedRoute><AdminSettings /></ProtectedRoute>
-              </Route>
-              <Route path="/admin/backup">
-                <ProtectedRoute><AdminBackup /></ProtectedRoute>
-              </Route>
-              <Route path="/admin/pages">
-                <ProtectedRoute><AdminPages /></ProtectedRoute>
-              </Route>
-              <Route path="/admin/comments">
-                <ProtectedRoute><AdminComments /></ProtectedRoute>
-              </Route>
-              <Route path="/admin/media">
-                <ProtectedRoute><AdminMedia /></ProtectedRoute>
-              </Route>
-              <Route path="/admin/analytics">
-                <ProtectedRoute><AdminAnalytics /></ProtectedRoute>
-              </Route>
-              <Route path="/admin">
-                <ProtectedRoute><AdminDashboard /></ProtectedRoute>
-              </Route>
-              <Route>
-                <NotFoundPage />
-              </Route>
-            </Switch>
-          </Suspense>
-        </AdminLayout>
+        <ProtectedRoute>
+          <AdminLayout>
+            <Suspense fallback={<div className="p-8 flex justify-center text-zinc-500">Loading...</div>}>
+              <Switch>
+                <Route path="/admin/settings"><AdminSettings /></Route>
+                <Route path="/admin/backup"><AdminBackup /></Route>
+                <Route path="/admin/pages"><AdminPages /></Route>
+                <Route path="/admin/comments"><AdminComments /></Route>
+                <Route path="/admin/media"><AdminMedia /></Route>
+                <Route path="/admin/analytics"><AdminAnalytics /></Route>
+                <Route path="/admin"><AdminDashboard /></Route>
+                <Route><NotFoundPage /></Route>
+              </Switch>
+            </Suspense>
+          </AdminLayout>
+        </ProtectedRoute>
       )}
     </>
   );

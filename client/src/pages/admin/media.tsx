@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import {
-  checkAuth, fetchMedia, deleteMedia, uploadImage, getToken,
+  fetchMedia, deleteMedia, uploadImage, getToken,
+  localizeAllImages, type LocalizeAllResult,
   type MediaItem,
 } from "@/lib/api";
 import {
@@ -45,11 +46,8 @@ export function AdminMedia() {
 
   useEffect(() => {
     document.title = "媒体库 | Monolith";
-    checkAuth().then((ok) => {
-      if (!ok) { setLocation("/admin/login"); return; }
-      loadMedia();
-    });
-  }, [setLocation]);
+    loadMedia();
+  }, []);
 
   const loadMedia = useCallback(() => {
     setLoading(true);
