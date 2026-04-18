@@ -54,6 +54,8 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }} # 修改点：从 GitHub Secrets 注入 Worker 管理员密码
+      JWT_SECRET: ${{ secrets.JWT_SECRET }} # 修改点：从 GitHub Secrets 注入 Worker JWT 密钥
       MONOLITH_API_BASE: ${{ github.event.inputs.api_base || '' }}
     steps:
       - name: Checkout
@@ -67,6 +69,23 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Sync Worker secrets from GitHub Secrets (optional)
+        # 修改点：ADMIN_PASSWORD/JWT_SECRET 缺失时仅告警并跳过，不阻塞 Worker/Pages 部署
+        # 修改点：在 server/ 目录执行 wrangler，确保读取到 server/wrangler.toml 的 Worker name
+        working-directory: server
+        run: |
+          if [ -n "${ADMIN_PASSWORD:-}" ]; then
+            printf '%s' "$ADMIN_PASSWORD" | npx wrangler secret put ADMIN_PASSWORD
+          else
+            echo "[warn] ADMIN_PASSWORD 未配置，跳过同步。"
+          fi
+
+          if [ -n "${JWT_SECRET:-}" ]; then
+            printf '%s' "$JWT_SECRET" | npx wrangler secret put JWT_SECRET
+          else
+            echo "[warn] JWT_SECRET 未配置，跳过同步。"
+          fi
 
       - name: Deploy via scripted pipeline
         run: |
