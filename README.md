@@ -162,6 +162,7 @@ CLOUDFLARE_ACCOUNT_ID
 需要在 cloudflare 中配置：
 1. 部署前，新建一个名为`monolith-client`的pages，无需上传任何有效内容，仅创建一个即可
 2. worker部署完毕后，需要添加`JWT_SECRET`与`ADMIN_PASSWORD`两个变量
+3. 部署完毕后，复制worker地址`https://your-worker.your-account.workers.dev`,前往`client/.env.production`,将原有的替换成自己的，再重新部署
 
 手动触发时可选参数：
 
