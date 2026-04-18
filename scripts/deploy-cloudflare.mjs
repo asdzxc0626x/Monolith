@@ -136,7 +136,7 @@ if (!options.skipClient) {
     "wrangler",
     "pages",
     "deploy",
-    "client/dist",
+    "dist",
     "--project-name",
     options.pagesProject,
     "--branch",
