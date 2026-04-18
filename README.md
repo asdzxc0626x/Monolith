@@ -160,8 +160,8 @@ CLOUDFLARE_API_TOKEN
 CLOUDFLARE_ACCOUNT_ID
 ```
 需要在 cloudflare 中配置：
-1. 新建一个名为`monolith-client`的pages，无需上传任何有效内容，仅创建一个即可
-2. worker部署完毕后需要添加`JWT_SECRET`与`ADMIN_PASSWORD`两个变量
+1. 部署前，新建一个名为`monolith-client`的pages，无需上传任何有效内容，仅创建一个即可
+2. worker部署完毕后，需要添加`JWT_SECRET`与`ADMIN_PASSWORD`两个变量
 
 手动触发时可选参数：
 
