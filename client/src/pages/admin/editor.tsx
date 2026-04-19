@@ -14,28 +14,28 @@ function handleEditorWillMount(monaco: Monaco) {
     inherit: true,
     rules: [
       // ─── Markdown 专属 ───
-      { token: "markup.heading", foreground: "e0a84c", fontStyle: "bold" },       // 标题 → 琥珀金
-      { token: "markup.bold", foreground: "e8e4df", fontStyle: "bold" },          // 粗体 → 暖白
-      { token: "markup.italic", foreground: "d4a76a", fontStyle: "italic" },      // 斜体 → 淡金
-      { token: "string.link", foreground: "6fb3d2" },                             // 链接 → 柔蓝
-      { token: "markup.underline.link", foreground: "6fb3d2" },                   // 链接 URL
-      { token: "markup.inline.raw", foreground: "7ec699" },                       // 行内代码 → 翡翠绿
-      { token: "markup.fenced_code", foreground: "7ec699" },                      // 代码块 → 翡翠绿
-      { token: "markup.list", foreground: "e0a84c" },                             // 列表标记 → 琥珀金
-      { token: "markup.quote", foreground: "8a8a8a", fontStyle: "italic" },       // 引用 → 暖灰斜体
+      { token: "markup.heading", foreground: "e0a84c", fontStyle: "bold" },
+      { token: "markup.bold", foreground: "EBEBEB", fontStyle: "bold" },
+      { token: "markup.italic", foreground: "d4a76a", fontStyle: "italic" },
+      { token: "string.link", foreground: "7ec8e6" },
+      { token: "markup.underline.link", foreground: "7ec8e6" },
+      { token: "markup.inline.raw", foreground: "8ed8aa" },
+      { token: "markup.fenced_code", foreground: "8ed8aa" },
+      { token: "markup.list", foreground: "e0a84c" },
+      { token: "markup.quote", foreground: "9a9a9a", fontStyle: "italic" },
       // ─── 通用 ───
-      { token: "comment", foreground: "6a6a6a", fontStyle: "italic" },            // 注释 → 中灰
-      { token: "keyword", foreground: "e0a84c" },                                 // 关键字 → 琥珀金
-      { token: "string", foreground: "7ec699" },                                  // 字符串 → 翡翠绿
-      { token: "number", foreground: "d4a76a" },                                  // 数字 → 淡金
-      { token: "type", foreground: "6fb3d2" },                                    // 类型 → 柔蓝
-      { token: "variable", foreground: "ccc8c2" },                                // 变量 → 暖白
-      { token: "operator", foreground: "a0a0a0" },                                // 运算符 → 浅灰
+      { token: "comment", foreground: "7a7a7a", fontStyle: "italic" },
+      { token: "keyword", foreground: "e0a84c" },
+      { token: "string", foreground: "8ed8aa" },
+      { token: "number", foreground: "d4a76a" },
+      { token: "type", foreground: "7ec8e6" },
+      { token: "variable", foreground: "d8d4ce" },
+      { token: "operator", foreground: "b0b0b0" },
     ],
     colors: {
       // 背景：中性深灰（不带蓝紫调）
       "editor.background": "#1c1c1e",
-      "editor.foreground": "#c8c4be",
+      "editor.foreground": "#EBEBEB",
       // 行高亮 — 微暖灰
       "editor.lineHighlightBackground": "#222224",
       "editor.lineHighlightBorder": "#00000000",
@@ -50,8 +50,8 @@ function handleEditorWillMount(monaco: Monaco) {
       "editorWhitespace.foreground": "#2a2a2c",
       "editorIndentGuide.background": "#2a2a2c",
       "editorIndentGuide.activeBackground": "#3a3a3c",
-      "editorLineNumber.foreground": "#3a3a3c",
-      "editorLineNumber.activeForeground": "#6a6a6a",
+      "editorLineNumber.foreground": "#4a4a4c",
+      "editorLineNumber.activeForeground": "#8a8a8a",
       // 括号匹配 — 微金色
       "editorBracketMatch.background": "#e0a84c15",
       "editorBracketMatch.border": "#e0a84c40",
@@ -468,15 +468,15 @@ export function AdminEditor() {
           <button
             type="button"
             onClick={() => setLocation("/admin")}
-            className="inline-flex items-center gap-[5px] h-[30px] px-[10px] rounded-md border border-border/20 bg-card/10 text-[12px] text-muted-foreground/60 hover:text-foreground hover:bg-card/20 transition-colors"
+            className="inline-flex items-center gap-[5px] h-[30px] px-[10px] rounded-md border border-border/20 bg-card/10 text-[12px] text-muted-foreground/85 hover:text-foreground hover:bg-card/20 transition-colors"
           >
             <ArrowLeft className="h-[12px] w-[12px]" />返回
           </button>
-          <span className="text-[11px] text-muted-foreground/35 font-mono">{wordCount} 字</span>
+          <span className="text-[11px] text-muted-foreground/80 font-mono">{wordCount} 字</span>
           {lastSaved && (
             <>
-              <span className="text-[12px] text-muted-foreground/20">|</span>
-              <span className="text-[11px] text-muted-foreground/30">上次保存 {lastSaved}</span>
+              <span className="text-[12px] text-muted-foreground/50">|</span>
+              <span className="text-[11px] text-muted-foreground/65">上次保存 {lastSaved}</span>
             </>
           )}
         </div>
@@ -488,10 +488,10 @@ export function AdminEditor() {
               {message.type === "success" ? "✓" : "✕"} {message.text}
             </span>
           )}
-          <button onClick={() => setZenMode(!zenMode)} title="专注模式" className="h-[30px] px-[8px] rounded-md text-muted-foreground/40 hover:text-foreground hover:bg-accent/20 transition-colors">
+          <button onClick={() => setZenMode(!zenMode)} title="专注模式" className="h-[30px] px-[8px] rounded-md text-muted-foreground/85 hover:text-foreground hover:bg-accent/20 transition-colors">
             {zenMode ? <Minimize2 className="h-[13px] w-[13px]" /> : <Maximize2 className="h-[13px] w-[13px]" />}
           </button>
-          <label className="flex items-center gap-[5px] text-[12px] text-muted-foreground/50 cursor-pointer select-none">
+          <label className="flex items-center gap-[5px] text-[12px] text-muted-foreground/80 cursor-pointer select-none">
             <input type="checkbox" checked={form.published} onChange={(e) => updateField("published", e.target.checked)} className="rounded accent-foreground" />
             发布
           </label>
@@ -502,11 +502,11 @@ export function AdminEditor() {
           {isEdit && (
             <>
               <div className="h-[14px] w-[1px] bg-border/20 mx-[2px]"></div>
-              <button onClick={() => setShowVersions(true)} title="历史版本" className="relative h-[30px] px-[8px] rounded-md text-muted-foreground/40 hover:text-foreground hover:bg-accent/20 transition-colors">
+              <button onClick={() => setShowVersions(true)} title="历史版本" className="relative h-[30px] px-[8px] rounded-md text-muted-foreground/85 hover:text-foreground hover:bg-accent/20 transition-colors">
                 <History className="h-[13px] w-[13px]" />
                 {versions.length > 0 && <span className="absolute top-[4px] right-[4px] h-[4px] w-[4px] rounded-full bg-cyan-500"></span>}
               </button>
-              <label title="保存时生成一份文章内容的历史快照" className="flex items-center gap-[4px] text-[12px] text-muted-foreground/50 hover:text-muted-foreground/80 cursor-pointer select-none transition-colors mr-[4px]">
+              <label title="保存时生成一份文章内容的历史快照" className="flex items-center gap-[4px] text-[12px] text-muted-foreground/80 hover:text-foreground cursor-pointer select-none transition-colors mr-[4px]">
                 <input type="checkbox" checked={saveVersion} onChange={(e) => setSaveVersion(e.target.checked)} className="rounded accent-foreground" />
                 建快照
               </label>
@@ -535,7 +535,7 @@ export function AdminEditor() {
                 } catch { showMsg("外链转本地失败", "error"); }
               }}
               title="将文章中的外链图片下载到本地存储"
-              className="inline-flex items-center gap-[4px] h-[30px] px-[8px] rounded-md text-[12px] text-muted-foreground/50 hover:text-foreground hover:bg-accent/15 transition-colors"
+              className="inline-flex items-center gap-[4px] h-[30px] px-[8px] rounded-md text-[12px] text-muted-foreground/80 hover:text-foreground hover:bg-accent/15 transition-colors"
             >
               <ImageDown className="h-[12px] w-[12px]" />外链转本地
             </button>
@@ -548,7 +548,7 @@ export function AdminEditor() {
         <div className="mb-[8px] shrink-0 rounded-lg border border-border/25 bg-card/15 overflow-hidden transition-all">
           <button
             onClick={() => setMetaCollapsed(!metaCollapsed)}
-            className="flex w-full items-center justify-between px-[16px] py-[8px] text-[11px] text-muted-foreground/40 hover:text-muted-foreground/60 transition-colors"
+            className="flex w-full items-center justify-between px-[16px] py-[8px] text-[11px] text-muted-foreground/85 hover:text-foreground transition-colors"
           >
             <span className="uppercase tracking-[0.08em]">
               {form.title || "文章元信息"}
@@ -560,33 +560,33 @@ export function AdminEditor() {
             <div className="px-[16px] pb-[14px] pt-[2px]">
               <div className="grid grid-cols-1 gap-[8px] sm:grid-cols-3 lg:grid-cols-5">
                 <div>
-                  <label className="mb-[2px] block text-[10px] text-muted-foreground/35 uppercase tracking-wider">Slug {autoSlug && <span className="text-blue-400/50">（自动）</span>}</label>
+                  <label className="mb-[2px] block text-[10px] text-muted-foreground/85 uppercase tracking-wider">Slug {autoSlug && <span className="text-blue-400/80">（自动）</span>}</label>
                   <input
                     value={form.slug}
                     onChange={(e) => { updateField("slug", e.target.value); setAutoSlug(false); }}
                     placeholder="my-article" disabled={isEdit}
-                    className="h-[30px] w-full rounded-md border border-border/25 bg-background/20 px-[10px] text-[12px] text-foreground font-mono placeholder:text-muted-foreground/20 outline-none focus:border-foreground/15 disabled:opacity-40 transition-colors"
+                    className="h-[30px] w-full rounded-md border border-border/25 bg-background/20 px-[10px] text-[12px] text-foreground font-mono placeholder:text-muted-foreground/50 outline-none focus:border-foreground/25 disabled:opacity-40 transition-colors"
                   />
                 </div>
                 <div>
-                  <label className="mb-[2px] block text-[10px] text-muted-foreground/35 uppercase tracking-wider">标签</label>
+                  <label className="mb-[2px] block text-[10px] text-muted-foreground/85 uppercase tracking-wider">标签</label>
                   <input
                     value={form.tags} onChange={(e) => updateField("tags", e.target.value)}
                     placeholder="Next.js, 前端"
-                    className="h-[30px] w-full rounded-md border border-border/25 bg-background/20 px-[10px] text-[12px] text-foreground placeholder:text-muted-foreground/20 outline-none focus:border-foreground/15 transition-colors"
+                    className="h-[30px] w-full rounded-md border border-border/25 bg-background/20 px-[10px] text-[12px] text-foreground placeholder:text-muted-foreground/50 outline-none focus:border-foreground/25 transition-colors"
                   />
                 </div>
                 <div>
-                  <label className="mb-[2px] block text-[10px] text-muted-foreground/35 uppercase tracking-wider">定时发布</label>
+                  <label className="mb-[2px] block text-[10px] text-muted-foreground/85 uppercase tracking-wider">定时发布</label>
                   <input
                     type="datetime-local"
                     value={form.publishAt}
                     onChange={(e) => updateField("publishAt", e.target.value)}
-                    className="h-[30px] w-full rounded-md border border-border/25 bg-background/20 px-[10px] text-[12px] text-foreground placeholder:text-muted-foreground/20 outline-none focus:border-foreground/15 transition-colors dark:[color-scheme:dark]"
+                    className="h-[30px] w-full rounded-md border border-border/25 bg-background/20 px-[10px] text-[12px] text-foreground placeholder:text-muted-foreground/50 outline-none focus:border-foreground/25 transition-colors dark:[color-scheme:dark]"
                   />
                 </div>
                 <div>
-                  <label className="mb-[2px] block text-[10px] text-muted-foreground/35 uppercase tracking-wider">封面色</label>
+                  <label className="mb-[2px] block text-[10px] text-muted-foreground/85 uppercase tracking-wider">封面色</label>
                   <div className="flex gap-[3px] h-[30px] items-center">
                     {colorPresets.map((preset) => (
                       <button key={preset.value} onClick={() => updateField("coverColor", preset.value)} title={preset.label}
@@ -598,33 +598,33 @@ export function AdminEditor() {
                   </div>
                 </div>
                 <div>
-                  <label className="mb-[2px] block text-[10px] text-muted-foreground/35 uppercase tracking-wider">系列 Slug</label>
+                  <label className="mb-[2px] block text-[10px] text-muted-foreground/85 uppercase tracking-wider">系列 Slug</label>
                   <input
                     value={form.seriesSlug}
                     onChange={(e) => updateField("seriesSlug", e.target.value)}
                     placeholder="如 react-tutorial"
-                    className="h-[30px] w-full rounded-md border border-border/25 bg-background/20 px-[10px] text-[12px] text-foreground font-mono placeholder:text-muted-foreground/20 outline-none focus:border-foreground/15 transition-colors"
+                    className="h-[30px] w-full rounded-md border border-border/25 bg-background/20 px-[10px] text-[12px] text-foreground font-mono placeholder:text-muted-foreground/50 outline-none focus:border-foreground/25 transition-colors"
                   />
                 </div>
                 <div>
-                  <label className="mb-[2px] block text-[10px] text-muted-foreground/35 uppercase tracking-wider">分类</label>
+                  <label className="mb-[2px] block text-[10px] text-muted-foreground/85 uppercase tracking-wider">分类</label>
                   <input
                     value={form.category}
                     onChange={(e) => updateField("category", e.target.value)}
                     placeholder="如 前端、后端、DevOps"
-                    className="h-[30px] w-full rounded-md border border-border/25 bg-background/20 px-[10px] text-[12px] text-foreground placeholder:text-muted-foreground/20 outline-none focus:border-foreground/15 transition-colors"
+                    className="h-[30px] w-full rounded-md border border-border/25 bg-background/20 px-[10px] text-[12px] text-foreground placeholder:text-muted-foreground/50 outline-none focus:border-foreground/25 transition-colors"
                   />
                 </div>
               </div>
               <input
                 value={form.title} onChange={(e) => updateField("title", e.target.value)}
                 placeholder="文章标题"
-                className="mt-[10px] w-full border-none bg-transparent text-[20px] font-semibold tracking-[-0.02em] text-foreground placeholder:text-muted-foreground/20 outline-none"
+                className="mt-[10px] w-full border-none bg-transparent text-[20px] font-semibold tracking-[-0.02em] text-foreground placeholder:text-muted-foreground/45 outline-none"
               />
               <textarea
                 value={form.excerpt} onChange={(e) => updateField("excerpt", e.target.value)}
                 placeholder="文章摘要（可选，用于列表展示）" rows={1}
-                className="mt-[6px] w-full resize-none bg-transparent text-[12px] leading-[1.7] text-muted-foreground/60 placeholder:text-muted-foreground/20 outline-none"
+                className="mt-[6px] w-full resize-none bg-transparent text-[12px] leading-[1.7] text-muted-foreground/85 placeholder:text-muted-foreground/50 outline-none"
               />
             </div>
           )}
@@ -643,7 +643,7 @@ export function AdminEditor() {
                 const Icon = item.icon;
                 return (
                   <button key={item.label} onClick={item.action} title={`${item.label}${item.shortcut ? ` (${item.shortcut})` : ""}`}
-                    className="h-[26px] w-[26px] rounded-[4px] inline-flex items-center justify-center text-muted-foreground/40 hover:text-foreground hover:bg-accent/20 transition-colors"
+                    className="h-[26px] w-[26px] rounded-[4px] inline-flex items-center justify-center text-muted-foreground/85 hover:text-foreground hover:bg-accent/20 transition-colors"
                   >
                     <Icon className="h-[13px] w-[13px]" />
                   </button>
@@ -653,7 +653,7 @@ export function AdminEditor() {
             <div className="flex items-center gap-[2px]">
               <input type="file" ref={fileInputRef} accept="image/*" className="hidden" onChange={(e) => { if (e.target.files?.[0]) handleImageUpload(e.target.files[0]); }} />
               <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
-                className="inline-flex items-center gap-[3px] h-[24px] px-[6px] rounded-[4px] text-[10px] text-muted-foreground/40 hover:text-foreground hover:bg-accent/20 transition-colors disabled:opacity-50"
+                className="inline-flex items-center gap-[3px] h-[24px] px-[6px] rounded-[4px] text-[10px] text-muted-foreground/85 hover:text-foreground hover:bg-accent/20 transition-colors disabled:opacity-50"
               >
                 {uploading ? <Upload className="h-[10px] w-[10px] animate-pulse" /> : <Image className="h-[10px] w-[10px]" />}
                 {uploading ? "上传中" : "插图"}
@@ -662,7 +662,7 @@ export function AdminEditor() {
               <button
                 onClick={() => setShowPreview(!showPreview)}
                 title={showPreview ? "关闭预览" : "打开预览"}
-                className={`inline-flex items-center gap-[3px] h-[24px] px-[6px] rounded-[4px] text-[10px] transition-colors ${showPreview ? "text-cyan-400/70 bg-cyan-500/8 hover:bg-cyan-500/12" : "text-muted-foreground/40 hover:text-foreground hover:bg-accent/20"}`}
+                className={`inline-flex items-center gap-[3px] h-[24px] px-[6px] rounded-[4px] text-[10px] transition-colors ${showPreview ? "text-cyan-400/70 bg-cyan-500/8 hover:bg-cyan-500/12" : "text-muted-foreground/60 hover:text-foreground hover:bg-accent/20"}`}
               >
                 {showPreview ? <Eye className="h-[10px] w-[10px]" /> : <EyeOff className="h-[10px] w-[10px]" />}
                 {showPreview ? "预览" : "预览"}
@@ -749,7 +749,7 @@ export function AdminEditor() {
         {showPreview && (
           <div className="flex flex-col min-h-0 border-l border-border/15">
             <div className="flex items-center justify-between px-[12px] py-[4px] border-b border-border/15 bg-card/10 shrink-0">
-              <span className="text-[10px] text-muted-foreground/35 uppercase tracking-[0.05em]">预览</span>
+              <span className="text-[10px] text-muted-foreground/85 uppercase tracking-[0.05em]">预览</span>
               <div className="flex items-center gap-[2px]">
                 <button
                   onClick={() => setSyncScroll(!syncScroll)}
@@ -757,7 +757,7 @@ export function AdminEditor() {
                   className={`h-[24px] px-[6px] rounded-[4px] inline-flex items-center gap-[4px] text-[10px] transition-all ${
                     syncScroll
                       ? "text-cyan-400/80 bg-cyan-500/10 hover:bg-cyan-500/15"
-                      : "text-muted-foreground/30 hover:text-muted-foreground/50 hover:bg-accent/10"
+                      : "text-muted-foreground/35 hover:text-muted-foreground/50 hover:bg-accent/10"
                   }`}
                 >
                   <ArrowDownUp className="h-[11px] w-[11px]" />
@@ -777,7 +777,7 @@ export function AdminEditor() {
 
       {/* ─── 底部快捷键提示 ─── */}
       {!zenMode && (
-        <div className="mt-[6px] flex items-center justify-center gap-[16px] text-[10px] text-muted-foreground/20 shrink-0">
+        <div className="mt-[6px] flex items-center justify-center gap-[16px] text-[10px] text-muted-foreground/55 shrink-0">
           <span><kbd className="px-[4px] py-[1px] rounded border border-border/15 text-[9px]">Ctrl+S</kbd> 保存</span>
           <span><kbd className="px-[4px] py-[1px] rounded border border-border/15 text-[9px]">Ctrl+B</kbd> 粗体</span>
           <span><kbd className="px-[4px] py-[1px] rounded border border-border/15 text-[9px]">Ctrl+I</kbd> 斜体</span>
@@ -794,14 +794,14 @@ export function AdminEditor() {
               <h3 className="text-[16px] font-semibold flex items-center gap-[8px]">
                 <History className="h-[16px] w-[16px] text-cyan-400" /> 文章历史版本 ({versions.length})
               </h3>
-              <button disabled={restoring} onClick={() => setShowVersions(false)} className="text-muted-foreground/40 hover:text-foreground transition-colors disabled:opacity-50">
+              <button disabled={restoring} onClick={() => setShowVersions(false)} className="text-muted-foreground/60 hover:text-foreground transition-colors disabled:opacity-50">
                 <X className="h-[18px] w-[18px]" />
               </button>
             </div>
             
             <div className="p-[20px] flex-1 overflow-y-auto min-h-0 space-y-[10px]">
               {versions.length === 0 ? (
-                <div className="text-center py-[40px] text-muted-foreground/40 text-[13px]">
+                <div className="text-center py-[40px] text-muted-foreground/60 text-[13px]">
                   暂无历史版本快照。<br/>请在保存文章前勾选「建快照」。
                 </div>
               ) : (

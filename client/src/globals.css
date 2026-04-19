@@ -63,7 +63,7 @@
   --secondary: oklch(0.28 0.006 220);
   --secondary-foreground: oklch(0.90 0 220);
   --muted: oklch(0.28 0.006 220);
-  --muted-foreground: oklch(0.68 0 220);
+  --muted-foreground: oklch(0.78 0 220);
   --accent: oklch(0.28 0.010 220);
   --accent-foreground: oklch(0.90 0 220);
   --destructive: oklch(0.704 0.191 22.216);
@@ -406,8 +406,36 @@
   overflow-wrap: anywhere;
 }
 
-/* 代码块 */
-.prose-monolith pre {
+/* 代码块包裹容器（负责溢出滚动、圆角、边框、背景） */
+.prose-monolith .code-block-wrapper {
+  margin: 24px 0;
+  border-radius: 8px;
+  background: oklch(0.15 0.006 220) !important;
+  border: 1px solid oklch(1 0 0 / 6%);
+  overflow-x: auto;
+}
+
+.prose-monolith .code-block-wrapper pre {
+  margin: 0;
+  padding: 16px 20px;
+  border-radius: 0;
+  border: none;
+  overflow-x: visible;
+  font-size: 13px;
+  line-height: 1.85;
+  letter-spacing: 0;
+  font-family: ui-monospace, "SF Mono", "Cascadia Code", "Fira Code", Consolas, monospace;
+}
+
+/* 移动端代码块右侧留白增强 */
+@media (max-width: 768px) {
+  .prose-monolith .code-block-wrapper pre {
+    padding-right: 24px;
+  }
+}
+
+/* 独立 pre 兜底样式（不在 code-block-wrapper 内时） */
+.prose-monolith pre:not(.hljs) {
   margin: 24px 0;
   padding: 16px 20px;
   border-radius: 8px;
@@ -428,15 +456,6 @@
   color: oklch(0.85 0 0);
   display: block;
   min-width: 100%;
-}
-
-/* 代码块包裹容器间距（统一管理 margin，pre 自身 margin 被 has-header 覆盖为 0） */
-.prose-monolith .code-block-wrapper {
-  margin: 24px 0;
-}
-
-.prose-monolith .code-block-wrapper pre {
-  margin-top: 0;
 }
 
 /* ── 块间衔接优化 ── */
@@ -815,6 +834,10 @@
 :root[data-theme="light"] .hljs-selector-id { color: oklch(0.48 0.16 80); }
 
 /* ── 亮色模式代码块背景覆盖 ─── */
+:root[data-theme="light"] .prose-monolith .code-block-wrapper {
+  background: oklch(0.96 0.002 250) !important;
+  border-color: oklch(0 0 0 / 8%);
+}
 :root[data-theme="light"] .prose-monolith pre {
   background: oklch(0.96 0.002 250) !important;
   border-color: oklch(0 0 0 / 8%);
