@@ -28,5 +28,3 @@ dist/
 .agents/
 GEMINI.md
 
-# package-lock.json（根目录，工作区级别，不追踪）
-/package-lock.json
